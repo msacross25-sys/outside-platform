@@ -192,6 +192,7 @@ model User {
   creatorProfile CreatorProfile?
   viewingProgress ViewingProgress?
   viewingSessions ViewingSession[]
+  viewerPresences LiveViewerPresence[]
   stageRequests PorchStageRequest[]
   liveSignalsSent LiveSignal[] @relation("signalSender")
   liveSignalsReceived LiveSignal[] @relation("signalTarget")
@@ -437,6 +438,7 @@ model PorchRoom {
   peakViewers Int @default(0)
   totalViewers Int @default(0)
   reactionCount Int @default(0)
+  followerBaseline Int @default(0)
   startedAt DateTime?
   endedAt DateTime?
   createdAt DateTime @default(now())
@@ -445,6 +447,7 @@ model PorchRoom {
   roomRestrictions PorchRoomRestriction[]
   giftTransactions GiftTransaction[]
   viewingSessions ViewingSession[]
+  liveViewerPresences LiveViewerPresence[]
   stageRequests PorchStageRequest[]
   liveSignals LiveSignal[]
   liveMessages LiveMessage[]
@@ -539,6 +542,18 @@ model HostApplication {
   agreementAcceptedAt DateTime?
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([status, appliedAt])
+}
+
+model LiveViewerPresence {
+  roomId String
+  userId String
+  firstSeenAt DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  active Boolean @default(true)
+  room PorchRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([roomId, userId])
+  @@index([roomId, active, lastSeenAt])
 }
 
 model ViewingSession {
