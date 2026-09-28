@@ -1,3 +1,1 @@
-import { Shell } from "@/components/Shell";
-import { NotificationList } from "@/components/NotificationList";
-export default function Notifications(){return <Shell><section className="page"><span className="eyebrow">Notifications</span><h1>What's happening with you.</h1><NotificationList/></section></Shell>}
+import { Shell } from "@/components/Shell";import { NotificationList } from "@/components/NotificationList";export default function Notifications(){return <Shell><section className="page notificationPage"><p className="neonEyebrow">ACTIVITY</p><h1>What’s happening with you.</h1><div className="activityTabs"><b>All</b><span>People</span><span>Comments</span><span>Creator</span></div><div className="activityPanel"><NotificationList/></div></section></Shell>}
