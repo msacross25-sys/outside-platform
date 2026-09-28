@@ -1,0 +1,3 @@
+"use client";
+import { FormEvent,useState } from "react";
+export function CommentForm({postId}:{postId:string}){const [body,setBody]=useState(""),[status,setStatus]=useState("");async function submit(e:FormEvent){e.preventDefault();const r=await fetch(`/api/posts/${postId}/comments`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({body})});if(r.status===401){location.href="/login";return}const d=await r.json();if(!r.ok)return setStatus(d.error??"Could not comment.");setBody("");location.reload()}return <form className="commentForm" onSubmit={submit}><input value={body} onChange={e=>setBody(e.target.value)} maxLength={1000} placeholder="Add a comment…" required/><button>Post</button>{status&&<span>{status}</span>}</form>}
