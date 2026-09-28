@@ -1,3 +1,3 @@
 import { Shell } from "@/components/Shell";
 import { HostApplication } from "@/components/HostApplication";
-export default function BecomeAHost(){return <Shell><section className="page"><p className="neonEyebrow">HOST CENTER</p><h1>Become a Host</h1><p className="lede">Hosts can create OUTSiiDE video and voice rooms after meeting the follower requirement and being approved.</p><HostApplication/></section></Shell>}
+export default function BecomeAHost(){return <Shell><section className="page"><p className="neonEyebrow">HOST CENTER</p><h1>Become a Host</h1><p className="lede">Host eligibility requires 2,500 followers, 3,000 verified viewing hours, good account standing, and approval. Progress does not automatically grant Host status.</p><HostApplication/></section></Shell>}
