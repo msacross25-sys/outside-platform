@@ -16,6 +16,8 @@ enum ReportReason { HARASSMENT HATE VIOLENCE SEXUAL_CONTENT SELF_HARM CHILD_SAFE
 enum NotificationType { FOLLOW LIKE COMMENT }
 enum CirclePrivacy { PUBLIC PRIVATE INVITE_ONLY }
 enum CircleRole { OWNER ADMIN MODERATOR MEMBER }
+enum PorchStatus { SCHEDULED LIVE ENDED CANCELLED }
+enum PorchRole { HOST COHOST MODERATOR SPEAKER LISTENER }
 
 model User {
   id String @id @default(cuid())
@@ -44,6 +46,7 @@ model User {
   conversationMembers ConversationMember[]
   sentMessages Message[] @relation("messageSender")
   circleMemberships CircleMember[]
+  porchMemberships PorchMember[]
   followers Follow[] @relation("following")
   following Follow[] @relation("followers")
 }
@@ -244,5 +247,32 @@ model CircleMember {
   circle Circle @relation(fields: [circleId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@id([circleId, userId])
+  @@index([userId])
+}
+
+
+model PorchRoom {
+  id String @id @default(cuid())
+  slug String @unique
+  title String
+  description String?
+  status PorchStatus @default(SCHEDULED)
+  scheduledFor DateTime?
+  startedAt DateTime?
+  endedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  members PorchMember[]
+  @@index([status, scheduledFor])
+}
+
+model PorchMember {
+  roomId String
+  userId String
+  role PorchRole @default(LISTENER)
+  joinedAt DateTime @default(now())
+  room PorchRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([roomId, userId])
   @@index([userId])
 }
