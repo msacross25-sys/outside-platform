@@ -81,6 +81,13 @@ enum HostApplicationStatus {
   REJECTED
   REMOVED
 }
+
+enum CreatorStatus {
+  ELIGIBLE
+  ACTIVE
+  PAUSED
+  REMOVED
+}
 enum StaffRole {
   OWNER
   EXECUTIVE_ADMIN
@@ -133,6 +140,7 @@ model User {
   porchMemberships PorchMember[]
   porchRestrictions PorchRoomRestriction[]
   hostApplication HostApplication?
+  creatorProfile CreatorProfile?
   receipts Receipt[]
   staffProfile StaffProfile?
   moderationActions ModerationActionLog[] @relation("moderationActor")
@@ -392,6 +400,15 @@ model HostApplication {
   reviewedById String?
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([status, appliedAt])
+}
+
+model CreatorProfile {
+  userId String @id
+  status CreatorStatus @default(ELIGIBLE)
+  activatedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Receipt {
