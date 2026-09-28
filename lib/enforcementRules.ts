@@ -1,0 +1,4 @@
+export type EnforcementInput={severity:"LOW"|"MEDIUM"|"HIGH"|"CRITICAL";repeatCount:number;fraud?:boolean;childSafety?:boolean;credibleThreat?:boolean};
+export function recommendedEnforcement(x:EnforcementInput){if(x.childSafety||x.credibleThreat||x.severity==="CRITICAL")return {action:"ESCALATE",humanReview:true,accountLevel:true};if(x.fraud&&x.repeatCount>0)return {action:"RESTRICT",humanReview:true,accountLevel:true};if(x.severity==="HIGH"||x.repeatCount>=3)return {action:"SUSPEND",humanReview:true,accountLevel:true};if(x.severity==="MEDIUM"||x.repeatCount>=1)return {action:"WARN",humanReview:true,accountLevel:false};return {action:"WARN",humanReview:false,accountLevel:false}}
+export const ROOM_ACTIONS={HOST:["MUTE","BAN","UNBAN","ADD_MODERATOR","REMOVE_MODERATOR"],MODERATOR:["MUTE","BAN"],VIEWER:[]} as const;
+export const MAX_LIVE_MODERATORS=5;
