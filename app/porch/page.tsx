@@ -1,0 +1,2 @@
+import { FeaturePage } from "@/components/FeaturePage";
+export default function Porch(){return <FeaturePage eyebrow="The Porch" title="Pull up a chair." copy="Audio or video rooms for conversations that deserve more than a comment section." items={["Host, co-host, moderator + speaker roles","Raise hand + audience questions","Audio or video rooms","Polls + audience chat","Scheduled rooms + reminders","Recording, replay + clips"]}/>;}
