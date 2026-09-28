@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AccountStatus { ACTIVE RESTRICTED SUSPENDED BANNED }
+enum PostVisibility { PUBLIC FOLLOWERS FRIENDS CIRCLE PRIVATE }
+enum MediaType { VIDEO IMAGE }
+enum ReactionType { LIKE }
+
+model User {
+  id            String        @id @default(cuid())
+  email         String        @unique
+  username      String        @unique
+  displayName   String
+  passwordHash  String
+  bio           String?
+  avatarUrl     String?
+  status        AccountStatus @default(ACTIVE)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  posts         Post[]
+  comments      Comment[]
+  reactions     Reaction[]
+  saves         Save[]
+  followers     Follow[]      @relation("following")
+  following     Follow[]      @relation("followers")
+}
+
+model Follow {
+  followerId String
+  followingId String
+  createdAt DateTime @default(now())
+  follower User @relation("followers", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+  @@id([followerId, followingId])
+  @@index([followingId])
+}
+
+model Post {
+  id          String         @id @default(cuid())
+  authorId    String
+  caption     String?
+  visibility  PostVisibility @default(PUBLIC)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  author      User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  media       Media[]
+  comments    Comment[]
+  reactions   Reaction[]
+  saves       Save[]
+  @@index([authorId, createdAt])
+  @@index([createdAt])
+}
+
+model Media {
+  id        String    @id @default(cuid())
+  postId    String
+  type      MediaType
+  url       String
+  posterUrl String?
+  width     Int?
+  height    Int?
+  durationMs Int?
+  position  Int       @default(0)
+  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  @@index([postId, position])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  @@index([postId, createdAt])
+}
+
+model Reaction {
+  userId    String
+  postId    String
+  type      ReactionType @default(LIKE)
+  createdAt DateTime @default(now())
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  @@id([userId, postId])
+  @@index([postId])
+}
+
+model Save {
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  @@id([userId, postId])
+}
