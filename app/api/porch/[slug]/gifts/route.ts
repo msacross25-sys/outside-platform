@@ -10,7 +10,7 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
  if(!gift)return NextResponse.json({error:"Gift not found."},{status:404});
  if(gift.premium&&body?.confirmed!==true)return NextResponse.json({error:"This premium gift requires confirmation.",requiresConfirmation:true},{status:409});
  const room=await db.porchRoom.findUnique({where:{slug},include:{members:{select:{userId:true,role:true}}}});
- if(!room||room.status!=="LIVE")return NextResponse.json({error:"Gifts can only be sent in a live room."},{status:409});
+ if(!room||room.status!=="LIVE"||!room.giftsEnabled)return NextResponse.json({error:"Gifts can only be sent in a live room."},{status:409});
  const senderMember=room.members.find(m=>m.userId===me.id);if(!senderMember)return NextResponse.json({error:"Join the room before sending a gift."},{status:403});
  const recipient=room.members.find(m=>m.role==="HOST");if(!recipient)return NextResponse.json({error:"Host not found."},{status:404});
  if(recipient.userId===me.id)return NextResponse.json({error:"You cannot send a gift to yourself."},{status:400});
