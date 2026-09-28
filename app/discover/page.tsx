@@ -1,2 +1,3 @@
-import { FeaturePage } from "@/components/FeaturePage";
-export default function Discover(){return <FeaturePage eyebrow="Discover" title="What's happening OUTSiiDE?" copy="Search and discover creators, videos, Lives, Porch rooms, Circles, sounds and topics." items={["Trending videos","Rising creators","Live now","Porch conversations","Circles","Sounds + topics"]}/>;}
+import { Shell } from "@/components/Shell";
+import { DiscoverSearch } from "@/components/DiscoverSearch";
+export default function Discover(){return <Shell><section className="page"><span className="eyebrow">Discover</span><h1>What's happening OUTSiiDE?</h1><p className="lede">Find creators and public posts now. Lives, Porch rooms, Circles, sounds and topics plug into this search layer as they come online.</p><DiscoverSearch/></section></Shell>}
