@@ -1,0 +1,15 @@
+"use client";
+import { useEffect,useState } from "react";
+type Member={userId:string;role:string;user:{username:string;displayName:string}};
+type Req={userId:string;status:string;user:{username:string;displayName:string}};
+export function PorchStageManager({slug,members,role,stageSize}:{slug:string;members:Member[];role:string|null;stageSize:number}){
+ const [people,setPeople]=useState(members),[requests,setRequests]=useState<Req[]>([]),[message,setMessage]=useState("");
+ const host=role==="HOST";const meOnStage=role==="HOST"||role==="COHOST"||role==="SPEAKER";
+ async function load(){const r=await fetch(`/api/porch/${slug}/stage`);if(r.ok){const d=await r.json();setRequests(d.requests??[])}}
+ useEffect(()=>{load()},[]);
+ async function requestStage(){setMessage("");const r=await fetch(`/api/porch/${slug}/stage`,{method:"POST"});const d=await r.json();setMessage(r.ok?"Stage request sent.":d.error??"Unable to request stage.");if(r.ok)load()}
+ async function act(userId:string,action:string){setMessage("");const r=await fetch(`/api/porch/${slug}/stage`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({userId,action})});const d=await r.json();if(!r.ok){setMessage(d.error??"Unable to update stage.");return}setPeople(p=>p.map(x=>x.userId===userId?{...x,role:action==="REMOVE"?"LISTENER":action==="DECLINE"?x.role:"SPEAKER"}:x));await load()}
+ if(!host)return <section className="featureCard"><span className="eyebrow">Stage</span><h2>{stageSize}-person stage</h2>{!meOnStage&&<button onClick={requestStage}>Request to Join Stage</button>}{meOnStage&&<p>You are on the stage.</p>}{requests[0]?.status==="PENDING"&&<p>Your request is pending host approval.</p>}{message&&<p>{message}</p>}</section>;
+ const staged=people.filter(x=>["HOST","COHOST","SPEAKER"].includes(x.role));const pending=requests.filter(x=>x.status==="PENDING");
+ return <section className="featureCard"><span className="eyebrow">Host Stage Controls</span><h2>Stage {staged.length}/{stageSize}</h2>{staged.filter(x=>x.role!=="HOST").map(x=><div key={x.userId}><b>{x.user.displayName}</b> <span>@{x.user.username}</span> <button onClick={()=>act(x.userId,"REMOVE")}>Remove</button></div>)}<h3>Requests</h3>{pending.length===0&&<p>No pending stage requests.</p>}{pending.map(x=><div key={x.userId}><b>{x.user.displayName}</b> <button onClick={()=>act(x.userId,"APPROVE")}>Approve</button> <button onClick={()=>act(x.userId,"DECLINE")}>Decline</button></div>)}<h3>Invite from room</h3>{people.filter(x=>x.role==="LISTENER").map(x=><button key={x.userId} disabled={staged.length>=stageSize} onClick={()=>act(x.userId,"INVITE")}>Invite {x.user.displayName}</button>)}{message&&<p>{message}</p>}</section>
+}
