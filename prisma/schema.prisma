@@ -659,6 +659,7 @@ model ViewingSession {
   verifiedSeconds Int @default(0)
   eligible Boolean @default(true)
   invalidReason String?
+  activityVerifiedAt DateTime?
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   room PorchRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
   @@index([userId, startedAt])
