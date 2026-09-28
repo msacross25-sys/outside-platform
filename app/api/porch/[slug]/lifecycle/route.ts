@@ -10,6 +10,8 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
   if(room.status==="LIVE")return NextResponse.json({status:"LIVE"});
   if(room.status==="ENDED"||room.status==="CANCELLED")return NextResponse.json({error:"This room cannot be restarted."},{status:409});
   const updated=await db.porchRoom.update({where:{id:room.id},data:{status:"LIVE",startedAt:new Date(),endedAt:null},select:{status:true,startedAt:true}});
+  await db.userBadge.upsert({where:{userId_key:{userId:me.id,key:"FIRST_LIVE"}},create:{userId:me.id,key:"FIRST_LIVE",name:"First Live",icon:"🎥"},update:{}});
+  const followers=await db.follow.findMany({where:{followingId:me.id},select:{followerId:true}});if(followers.length)await db.notification.createMany({data:followers.map(f=>({recipientId:f.followerId,actorId:me.id,type:"LIVE_STARTED"})),skipDuplicates:false});
   return NextResponse.json(updated);
  }
  if(action==="END"){
