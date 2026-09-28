@@ -1,2 +1,3 @@
-import { FeaturePage } from "@/components/FeaturePage";
-export default function Circles(){return <FeaturePage eyebrow="Circles" title="Find your people." copy="Public, private and invite-only communities with their own social spaces." items={["Circle feed","Group chat","Stories + Live","Porch rooms","Events","Owner, admin + moderator roles"]}/>;}
+import { Shell } from "@/components/Shell";
+import { CircleDirectory } from "@/components/CircleDirectory";
+export default function Circles(){return <Shell><section className="page"><span className="eyebrow">Circles</span><h1>Find your people.</h1><p className="lede">Build communities with their own members, conversations, Lives and Porch rooms.</p><CircleDirectory/></section></Shell>}
