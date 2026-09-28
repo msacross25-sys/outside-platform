@@ -1,0 +1,5 @@
+import { NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { currentUser } from "@/lib/session";
+export async function POST(_:Request,{params}:{params:{username:string}}){const me=await currentUser();if(!me)return NextResponse.json({error:"Sign in required."},{status:401});const u=await db.user.findUnique({where:{username:params.username.toLowerCase()},select:{id:true}});if(!u)return NextResponse.json({error:"User not found."},{status:404});if(u.id===me.id)return NextResponse.json({error:"You cannot mute yourself."},{status:400});await db.mute.upsert({where:{muterId_mutedId:{muterId:me.id,mutedId:u.id}},create:{muterId:me.id,mutedId:u.id},update:{}});return NextResponse.json({muted:true});}
+export async function DELETE(_:Request,{params}:{params:{username:string}}){const me=await currentUser();if(!me)return NextResponse.json({error:"Sign in required."},{status:401});const u=await db.user.findUnique({where:{username:params.username.toLowerCase()},select:{id:true}});if(!u)return NextResponse.json({error:"User not found."},{status:404});await db.mute.deleteMany({where:{muterId:me.id,mutedId:u.id}});return NextResponse.json({muted:false});}
