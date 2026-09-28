@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { currentStaff,canManageHosts } from "@/lib/hq";
+import { accountStanding } from "@/lib/accountStanding";
 
 export async function GET(){
  const access=await currentStaff();
@@ -21,7 +22,7 @@ export async function POST(request:Request){
  const application=await db.hostApplication.findUnique({where:{id},include:{user:{select:{status:true,viewingProgress:{select:{verifiedSeconds:true}},_count:{select:{followers:true}}}}}});
  if(!application)return NextResponse.json({error:"Host application not found."},{status:404});
  if(action==="APPROVED"&&application.status!=="PENDING")return NextResponse.json({error:"Only pending applications can be approved."},{status:409});
- const viewingHours=Number(application.user.viewingProgress?.verifiedSeconds??0n)/3600;if(action==="APPROVED"&&(application.user.status!=="ACTIVE"||application.user._count.followers<2500||viewingHours<3000))return NextResponse.json({error:"Host approval requires 2,500+ followers, 3,000 verified viewing hours, and good account standing."},{status:409});
+ const viewingHours=Number(application.user.viewingProgress?.verifiedSeconds??0n)/3600;const standing=await accountStanding(application.userId);if(action==="APPROVED"&&(application.user.status!=="ACTIVE"||application.user._count.followers<2500||viewingHours<3000||!standing.goodStanding||!standing.hostEligible))return NextResponse.json({error:"Host approval requires 2,500+ followers, 3,000 verified viewing hours, good account standing, and no Host-eligibility restriction."},{status:409});
  const updated=await db.$transaction(async tx=>{
   const result=await tx.hostApplication.update({where:{id},data:{status:action as "APPROVED"|"REJECTED"|"REMOVED",reviewedAt:new Date(),reviewedById:access.user.id}});
   await tx.auditLog.create({data:{actorId:access.user.id,action:"HOST_"+action,resourceType:"HOST_APPLICATION",resourceId:id,reason:"Host application review"}});
