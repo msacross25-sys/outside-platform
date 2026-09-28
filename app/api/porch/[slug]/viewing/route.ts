@@ -5,7 +5,9 @@ const MAX_HEARTBEAT_SECONDS=90;
 async function roomAndHost(slug:string){return db.porchRoom.findUnique({where:{slug},include:{members:{where:{role:"HOST"},select:{userId:true}}}})}
 export async function POST(request:Request,{params}:{params:Promise<{slug:string}>}){
  const {slug}=await params;const me=await currentUser();if(!me)return NextResponse.json({error:"Sign in required."},{status:401});
- const room=await roomAndHost(slug);if(!room||room.status!=="LIVE")return NextResponse.json({error:"Live room unavailable."},{status:404});
+ const room=await roomAndHost(slug);if(!room||room.status!=="LIVE"||!room.startedAt)return NextResponse.json({error:"Live room unavailable."},{status:404});
+ const liveMinutes=(Date.now()-room.startedAt.getTime())/60000;
+ if(liveMinutes<30)return NextResponse.json({error:"Verified viewing time starts after the room has been live for at least 30 minutes.",minutesRemaining:Math.ceil(30-liveMinutes)},{status:403});
  if(room.members.some(x=>x.userId===me.id))return NextResponse.json({error:"Watching your own live does not count toward verified viewing hours."},{status:403});
  const body=await request.json().catch(()=>null),sessionId=String(body?.sessionId??"");
  if(!sessionId){const session=await db.viewingSession.create({data:{userId:me.id,roomId:room.id}});return NextResponse.json({sessionId:session.id,verifiedSeconds:0});}
