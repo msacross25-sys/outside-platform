@@ -16,8 +16,9 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
  }
  if(action==="END"){
   if(room.status==="ENDED")return NextResponse.json({status:"ENDED"});
+  if(room.status!=="LIVE")return NextResponse.json({error:"Only a live room can be ended."},{status:409});
   const updated=await db.porchRoom.update({where:{id:room.id},data:{status:"ENDED",endedAt:new Date(),screenSharing:false},select:{status:true,endedAt:true}});
-  await db.viewingSession.updateMany({where:{roomId:room.id,endedAt:null},data:{endedAt:new Date()}});
+  await db.viewingSession.updateMany({where:{roomId:room.id,endedAt:null},data:{endedAt:new Date()}});await db.liveSignal.deleteMany({where:{roomId:room.id}});
   return NextResponse.json(updated);
  }
  if(action==="CANCEL"){
