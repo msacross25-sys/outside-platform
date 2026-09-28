@@ -1,20 +1,18 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { currentUser } from "@/lib/session";
-
+import { verifiedHours } from "@/lib/progression";
 export async function GET(){
- const me=await currentUser();
- if(!me)return NextResponse.json({error:"Sign in required."},{status:401});
- const followers=await db.follow.count({where:{followingId:me.id}});
- const application=await db.hostApplication.findUnique({where:{userId:me.id},select:{status:true,appliedAt:true,reviewedAt:true}});
- return NextResponse.json({followers,eligible:followers>=500,application});
+ const me=await currentUser();if(!me)return NextResponse.json({error:"Sign in required."},{status:401});
+ const [followers,progress,application]=await Promise.all([db.follow.count({where:{followingId:me.id}}),db.viewingProgress.findUnique({where:{userId:me.id}}),db.hostApplication.findUnique({where:{userId:me.id},select:{status:true,appliedAt:true,reviewedAt:true}})]);
+ const hours=verifiedHours(progress?.verifiedSeconds??0);
+ return NextResponse.json({followers,verifiedViewingHours:hours,goodStanding:me.status==="ACTIVE",eligible:followers>=2500&&hours>=3000&&me.status==="ACTIVE",application});
 }
-
 export async function POST(){
- const me=await currentUser();
- if(!me)return NextResponse.json({error:"Sign in required."},{status:401});
- const followers=await db.follow.count({where:{followingId:me.id}});
- if(followers<500)return NextResponse.json({error:"You need at least 500 followers to apply.",followers},{status:403});
+ const me=await currentUser();if(!me)return NextResponse.json({error:"Sign in required."},{status:401});
+ const [followers,progress]=await Promise.all([db.follow.count({where:{followingId:me.id}}),db.viewingProgress.findUnique({where:{userId:me.id}})]);const hours=verifiedHours(progress?.verifiedSeconds??0);
+ if(me.status!=="ACTIVE")return NextResponse.json({error:"Your account must be in good standing to apply."},{status:403});
+ if(followers<2500||hours<3000)return NextResponse.json({error:"Host eligibility requires 2,500 followers and 3,000 verified viewing hours.",followers,verifiedViewingHours:hours},{status:403});
  const existing=await db.hostApplication.findUnique({where:{userId:me.id},select:{status:true}});
  if(existing?.status==="APPROVED")return NextResponse.json({error:"You are already an approved host."},{status:409});
  if(existing?.status==="PENDING")return NextResponse.json({error:"Your application is already pending review."},{status:409});
