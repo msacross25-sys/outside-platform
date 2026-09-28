@@ -47,6 +47,7 @@ model User {
   sentMessages Message[] @relation("messageSender")
   circleMemberships CircleMember[]
   porchMemberships PorchMember[]
+  receipts Receipt[]
   followers Follow[] @relation("following")
   following Follow[] @relation("followers")
 }
@@ -120,6 +121,7 @@ model Post {
   comments Comment[]
   reactions Reaction[]
   saves Save[]
+  receipts Receipt[]
   @@index([authorId, createdAt])
   @@index([createdAt])
 }
@@ -275,4 +277,20 @@ model PorchMember {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@id([roomId, userId])
   @@index([userId])
+}
+
+
+model Receipt {
+  id String @id @default(cuid())
+  postId String
+  authorId String
+  title String
+  sourceUrl String?
+  note String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  @@index([postId, createdAt])
+  @@index([authorId, createdAt])
 }
