@@ -162,6 +162,7 @@ model User {
   hostApplication HostApplication?
   creatorProfile CreatorProfile?
   viewingProgress ViewingProgress?
+  viewingSessions ViewingSession[]
   coinWallet CoinWallet?
   sentGiftTransactions GiftTransaction[] @relation("giftSender")
   receivedGiftTransactions GiftTransaction[] @relation("giftRecipient")
@@ -393,6 +394,7 @@ model PorchRoom {
   members PorchMember[]
   roomRestrictions PorchRoomRestriction[]
   giftTransactions GiftTransaction[]
+  viewingSessions ViewingSession[]
   @@index([status, scheduledFor])
 }
 
@@ -429,6 +431,22 @@ model HostApplication {
   reviewedById String?
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([status, appliedAt])
+}
+
+model ViewingSession {
+  id String @id @default(cuid())
+  userId String
+  roomId String
+  startedAt DateTime @default(now())
+  lastHeartbeatAt DateTime @default(now())
+  endedAt DateTime?
+  verifiedSeconds Int @default(0)
+  eligible Boolean @default(true)
+  invalidReason String?
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room PorchRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  @@index([userId, startedAt])
+  @@index([roomId, startedAt])
 }
 
 model ViewingProgress {
