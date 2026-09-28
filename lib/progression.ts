@@ -7,6 +7,6 @@ export const CREATOR_LEVELS=[
  {key:"ADVANCED_PLUS",name:"Advanced+",followers:25000,hours:7500,creatorShare:40}
 ] as const;
 export function verifiedHours(seconds:bigint|number|string){return Number(BigInt(seconds))/3600}
-export function levelFor(followers:number,hours:number){return [...CREATOR_LEVELS].reverse().find(x=>followers>=x.followers&&hours>=x.hours)??null}
+export function levelFor(followers:number,hours:number,hostApproved=false){return [...CREATOR_LEVELS].reverse().find(x=>followers>=x.followers&&hours>=x.hours&&(!["ESTABLISHED_HOST","ADVANCED_HOST","ADVANCED_PLUS"].includes(x.key)||hostApproved))??null}
 export function nextLevel(followers:number,hours:number){return CREATOR_LEVELS.find(x=>followers<x.followers||hours<x.hours)??null}
-export function creatorShareFor(followers:number,hours:number){return levelFor(followers,hours)?.creatorShare??30}
+export function creatorShareFor(followers:number,hours:number,hostApproved=false){return levelFor(followers,hours,hostApproved)?.creatorShare??30}
