@@ -219,6 +219,9 @@ model User {
   liveReactions LiveReaction[]
   liveReplays LiveReplay[]
   clips Clip[]
+  cosmetics HostCosmetic[]
+  cosmeticGiftsSent CosmeticGift[] @relation("cosmeticGiftSender")
+  cosmeticGiftsReceived CosmeticGift[] @relation("cosmeticGiftHost")
   staffProfile StaffProfile?
   moderationActions ModerationActionLog[] @relation("moderationActor")
   auditEvents AuditLog[] @relation("auditActor")
@@ -683,6 +686,27 @@ model GiftTransaction {
   @@index([senderId, createdAt])
   @@index([recipientId, createdAt])
   @@index([status, createdAt])
+}
+
+model HostCosmetic {
+  userId String
+  effectKey String
+  unlockedAt DateTime @default(now())
+  source String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([userId, effectKey])
+}
+
+model CosmeticGift {
+  id String @id @default(cuid())
+  senderId String
+  hostId String
+  effectKey String
+  coinCost BigInt
+  createdAt DateTime @default(now())
+  sender User @relation("cosmeticGiftSender", fields: [senderId], references: [id], onDelete: Restrict)
+  host User @relation("cosmeticGiftHost", fields: [hostId], references: [id], onDelete: Restrict)
+  @@index([hostId, createdAt])
 }
 
 model CreatorPayout {
