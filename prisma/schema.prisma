@@ -161,6 +161,7 @@ model User {
   porchRestrictions PorchRoomRestriction[]
   hostApplication HostApplication?
   creatorProfile CreatorProfile?
+  viewingProgress ViewingProgress?
   coinWallet CoinWallet?
   sentGiftTransactions GiftTransaction[] @relation("giftSender")
   receivedGiftTransactions GiftTransaction[] @relation("giftRecipient")
@@ -428,6 +429,13 @@ model HostApplication {
   reviewedById String?
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([status, appliedAt])
+}
+
+model ViewingProgress {
+  userId String @id
+  verifiedSeconds BigInt @default(0)
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model CreatorProfile {
