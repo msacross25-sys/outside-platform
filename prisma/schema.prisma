@@ -213,6 +213,7 @@ model User {
   sentGiftTransactions GiftTransaction[] @relation("giftSender")
   receivedGiftTransactions GiftTransaction[] @relation("giftRecipient")
   creatorPayouts CreatorPayout[]
+  payoutLedgerEntries PayoutLedgerEntry[]
   receipts Receipt[]
   badges UserBadge[]
   liveMessages LiveMessage[]
@@ -721,7 +722,25 @@ model CreatorPayout {
   updatedAt DateTime @updatedAt
   creator User @relation(fields: [creatorId], references: [id], onDelete: Restrict)
   @@index([creatorId, createdAt])
+  ledgerEntries PayoutLedgerEntry[]
   @@index([status, scheduledFor])
+}
+
+model PayoutLedgerEntry {
+  id String @id @default(cuid())
+  creatorId String
+  payoutId String?
+  kind String
+  amountCents Int
+  referenceType String?
+  referenceId String?
+  note String?
+  createdAt DateTime @default(now())
+  creator User @relation(fields: [creatorId], references: [id], onDelete: Restrict)
+  payout CreatorPayout? @relation(fields: [payoutId], references: [id], onDelete: Restrict)
+  @@index([creatorId, createdAt])
+  @@index([payoutId])
+  @@index([referenceType, referenceId])
 }
 
 model Receipt {
