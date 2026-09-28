@@ -1,6 +1,6 @@
 "use client";import {FormEvent,useEffect,useState} from "react";
 type Msg={id:string;body:string;createdAt:string;pinned:boolean;user:{username:string;displayName:string}};
-export function LiveChat({slug,role}:{slug:string;role:string|null}){const [messages,setMessages]=useState<Msg[]>([]),[pinned,setPinned]=useState<Msg|null>(null),[error,setError]=useState(""),[likes,setLikes]=useState(0);const canPin=role==="HOST"||role==="MODERATOR";
+export function LiveChat({slug,role}:{slug:string;role:string|null}){const [messages,setMessages]=useState<Msg[]>([]),[pinned,setPinned]=useState<Msg|null>(null),[error,setError]=useState(""),[likes,setLikes]=useState(0);const canPin=role==="HOST";
  async function load(){const r=await fetch(`/api/porch/${slug}/chat?since=${Date.now()-120000}`);if(r.ok){const d=await r.json();setMessages(d.messages??[]);setPinned(d.pinned??null)}const x=await fetch(`/api/porch/${slug}/reactions`);if(x.ok)setLikes((await x.json()).count??0)}
  useEffect(()=>{load();const id=setInterval(load,2500);return()=>clearInterval(id)},[]);
  async function send(e:FormEvent<HTMLFormElement>){e.preventDefault();const form=e.currentTarget,f=new FormData(form),body=String(f.get("body")??"");const r=await fetch(`/api/porch/${slug}/chat`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({body})});const d=await r.json();if(!r.ok)return setError(d.error??"Unable to send.");form.reset();setError("");load()}
