@@ -1,4 +1,4 @@
 import {db} from "@/lib/db";
-export async function financeStaff(userId:string){const staff=await db.staffProfile.findUnique({where:{userId}});return Boolean(staff?.active&&["OWNER","EXECUTIVE_ADMIN","FINANCE"].includes(staff.role))}
+export async function financeStaff(userId:string){const staff=await db.staffProfile.findUnique({where:{userId}});return Boolean(staff?.active&&staff.role==="OWNER")}
 export function validGiftTransition(from:string,to:string){const allowed:Record<string,string[]>={PENDING:["SETTLED","REFUNDED","CHARGEBACK"],SETTLED:["REFUNDED","CHARGEBACK","ADJUSTED"],REFUNDED:[],CHARGEBACK:["ADJUSTED"],ADJUSTED:["REFUNDED","CHARGEBACK"]};return allowed[from]?.includes(to)??false}
 export function validPayoutTransition(from:string,to:string){const allowed:Record<string,string[]>={PENDING:["PROCESSING","CANCELLED"],PROCESSING:["PAID","FAILED","CANCELLED"],FAILED:["PENDING","CANCELLED"],PAID:[],CANCELLED:[]};return allowed[from]?.includes(to)??false}
