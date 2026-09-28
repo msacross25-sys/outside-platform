@@ -193,7 +193,8 @@ model User {
   viewingProgress ViewingProgress?
   viewingSessions ViewingSession[]
   stageRequests PorchStageRequest[]
-  liveSignals LiveSignal[]
+  liveSignalsSent LiveSignal[] @relation("signalSender")
+  liveSignalsReceived LiveSignal[] @relation("signalTarget")
   coinWallet CoinWallet?
   sentGiftTransactions GiftTransaction[] @relation("giftSender")
   receivedGiftTransactions GiftTransaction[] @relation("giftRecipient")
@@ -443,6 +444,7 @@ model PorchRoom {
   giftTransactions GiftTransaction[]
   viewingSessions ViewingSession[]
   stageRequests PorchStageRequest[]
+  liveSignals LiveSignal[]
   @@index([status, scheduledFor])
 }
 
