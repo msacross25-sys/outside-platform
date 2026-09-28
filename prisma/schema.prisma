@@ -819,6 +819,7 @@ model TrustCase {
   affectsHostStanding Boolean @default(false)
   openedAt DateTime @default(now())
   resolvedAt DateTime?
+  permanentEnforcement Boolean @default(false)
   target User @relation("trustCaseTarget", fields: [targetUserId], references: [id], onDelete: Restrict)
   events TrustCaseEvent[]
   @@index([targetUserId, openedAt])
