@@ -461,6 +461,7 @@ model PorchRoom {
   roomType PorchRoomType @default(VIDEO)
   stageSize Int @default(1)
   screenSharing Boolean @default(false)
+  musicEnabled Boolean @default(false)
   category String?
   visibility LiveVisibility @default(PUBLIC)
   guestRequestsEnabled Boolean @default(true)
