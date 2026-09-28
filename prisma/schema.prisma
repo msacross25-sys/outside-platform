@@ -84,6 +84,17 @@ enum LiveVisibility {
   FOLLOWERS
   PRIVATE
 }
+enum ReplayStatus {
+  PENDING
+  READY
+  FAILED
+  DELETED
+}
+enum ClipVisibility {
+  PUBLIC
+  FOLLOWERS
+  PRIVATE
+}
 
 enum PorchStageRequestStatus {
   PENDING
@@ -206,6 +217,8 @@ model User {
   badges UserBadge[]
   liveMessages LiveMessage[]
   liveReactions LiveReaction[]
+  liveReplays LiveReplay[]
+  clips Clip[]
   staffProfile StaffProfile?
   moderationActions ModerationActionLog[] @relation("moderationActor")
   auditEvents AuditLog[] @relation("auditActor")
@@ -454,6 +467,8 @@ model PorchRoom {
   liveSignals LiveSignal[]
   liveMessages LiveMessage[]
   liveReactions LiveReaction[]
+  replay LiveReplay?
+  clips Clip[]
   @@index([status, scheduledFor])
 }
 
@@ -492,6 +507,51 @@ model LiveReaction {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([roomId, createdAt])
   @@index([userId, createdAt])
+}
+
+model LiveReplay {
+  id String @id @default(cuid())
+  roomId String @unique
+  hostId String
+  status ReplayStatus @default(PENDING)
+  visible Boolean @default(true)
+  mediaUrl String?
+  downloadUrl String?
+  durationSeconds Int @default(0)
+  totalViewers Int @default(0)
+  peakViewers Int @default(0)
+  verifiedWatchSeconds Int @default(0)
+  followersGained Int @default(0)
+  reactionCount Int @default(0)
+  commentCount Int @default(0)
+  giftCount Int @default(0)
+  giftValueCents Int @default(0)
+  creatorEarningsCents Int @default(0)
+  createdAt DateTime @default(now())
+  readyAt DateTime?
+  room PorchRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  host User @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  clips Clip[]
+  @@index([hostId, createdAt])
+  @@index([status, createdAt])
+}
+
+model Clip {
+  id String @id @default(cuid())
+  creatorId String
+  roomId String
+  replayId String?
+  title String?
+  mediaUrl String?
+  startSeconds Int
+  endSeconds Int
+  visibility ClipVisibility @default(PUBLIC)
+  createdAt DateTime @default(now())
+  creator User @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  room PorchRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  replay LiveReplay? @relation(fields: [replayId], references: [id], onDelete: SetNull)
+  @@index([creatorId, createdAt])
+  @@index([roomId, createdAt])
 }
 
 model LiveSignal {
