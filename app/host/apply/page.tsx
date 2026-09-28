@@ -1,0 +1,3 @@
+import { Shell } from "@/components/Shell";
+import { HostApplication } from "@/components/HostApplication";
+export default function BecomeAHost(){return <Shell><section className="page"><p className="neonEyebrow">HOST CENTER</p><h1>Become a Host</h1><p className="lede">Hosts can create OUTSiiDE video and voice rooms after meeting the follower requirement and being approved.</p><HostApplication/></section></Shell>}
