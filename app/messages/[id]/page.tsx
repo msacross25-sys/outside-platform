@@ -1,3 +1,1 @@
-import { Shell } from "@/components/Shell";
-import { ChatThread } from "@/components/ChatThread";
-export default function Conversation({params}:{params:{id:string}}){return <Shell><section className="page"><span className="eyebrow">Messages</span><h1>Conversation</h1><ChatThread id={params.id}/></section></Shell>}
+import { Shell } from "@/components/Shell";import { ChatThread } from "@/components/ChatThread";export default function Conversation({params}:{params:{id:string}}){return <Shell><section className="page conversationPage"><div className="conversationHead"><div><p className="neonEyebrow">OUTSiiDE MESSAGES</p><h1>Conversation</h1></div><span>•••</span></div><div className="conversationPanel"><ChatThread id={params.id}/></div></section></Shell>}
