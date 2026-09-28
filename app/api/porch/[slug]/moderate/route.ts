@@ -16,7 +16,7 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
  const target=await db.porchMember.findUnique({where:{roomId_userId:{roomId:a.room.id,userId}},select:{role:true}});
  if(!target)return NextResponse.json({error:"Room participant not found."},{status:404});
  if(a.role==="MODERATOR"&&["HOST","COHOST","MODERATOR"].includes(target.role))return NextResponse.json({error:"Moderators cannot control hosts or other room staff."},{status:403});
- if(a.role==="MODERATOR"&&action==="UNBAN")return NextResponse.json({error:"Only the host can unban people."},{status:403});
+ if(a.role==="MODERATOR"&&!["MUTE","BAN"].includes(action))return NextResponse.json({error:"Moderators can only mute or ban people from the room."},{status:403});
  const restriction=await db.porchRoomRestriction.upsert({where:{roomId_userId:{roomId:a.room.id,userId}},create:{roomId:a.room.id,userId,muted:action==="MUTE",banned:action==="BAN"},update:action==="MUTE"?{muted:true}:action==="UNMUTE"?{muted:false}:action==="BAN"?{banned:true,muted:true}:{banned:false}});
  if(action==="BAN")await db.porchMember.deleteMany({where:{roomId:a.room.id,userId}});
  return NextResponse.json({restriction});
