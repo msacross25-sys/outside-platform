@@ -1,0 +1,5 @@
+import { NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { currentUser } from "@/lib/session";
+const reasons=["HARASSMENT","HATE","VIOLENCE","SEXUAL_CONTENT","SELF_HARM","CHILD_SAFETY","SPAM_SCAM","IMPERSONATION","PRIVACY","OTHER"] as const;
+export async function POST(request:Request){const me=await currentUser();if(!me)return NextResponse.json({error:"Sign in required."},{status:401});const body=await request.json().catch(()=>null);if(!body||!reasons.includes(body.reason))return NextResponse.json({error:"Choose a valid report reason."},{status:400});const reportedUserId=body.username?(await db.user.findUnique({where:{username:String(body.username).toLowerCase()},select:{id:true}}))?.id:null;const postId=body.postId?String(body.postId):null;if(!reportedUserId&&!postId)return NextResponse.json({error:"Choose an account or post to report."},{status:400});const report=await db.report.create({data:{reporterId:me.id,reportedUserId,postId,reason:body.reason,details:String(body.details??"").trim().slice(0,1000)},select:{id:true,status:true,createdAt:true}});return NextResponse.json({report},{status:201});}
