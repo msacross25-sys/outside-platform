@@ -49,7 +49,15 @@ enum NotificationType {
   FOLLOW
   LIKE
   COMMENT
+  LIVE_STARTED
+  GIFT_RECEIVED
+  FOLLOWER_MILESTONE
+  REPLAY_READY
+  CREATOR_LEVEL
+  BADGE_UNLOCKED
 }
+enum AccountPrivacy { PUBLIC PRIVATE }
+enum ContactPrivacy { EVERYONE FOLLOWERS FRIENDS NOBODY }
 enum CirclePrivacy {
   PUBLIC
   PRIVATE
@@ -150,6 +158,15 @@ model User {
   passwordHash String
   bio String?
   avatarUrl String?
+  profileVideoUrl String?
+  verified Boolean @default(false)
+  privacy AccountPrivacy @default(PUBLIC)
+  messagePrivacy ContactPrivacy @default(EVERYONE)
+  commentPrivacy ContactPrivacy @default(EVERYONE)
+  mentionPrivacy ContactPrivacy @default(EVERYONE)
+  liveInvitePrivacy ContactPrivacy @default(EVERYONE)
+  hideActivity Boolean @default(false)
+  hideConnections Boolean @default(false)
   status AccountStatus @default(ACTIVE)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -182,6 +199,7 @@ model User {
   receivedGiftTransactions GiftTransaction[] @relation("giftRecipient")
   creatorPayouts CreatorPayout[]
   receipts Receipt[]
+  badges UserBadge[]
   staffProfile StaffProfile?
   moderationActions ModerationActionLog[] @relation("moderationActor")
   auditEvents AuditLog[] @relation("auditActor")
@@ -589,6 +607,19 @@ model Receipt {
   @@index([authorId, createdAt])
 }
 
+
+model UserBadge {
+  id String @id @default(cuid())
+  userId String
+  key String
+  name String
+  icon String?
+  unlockedAt DateTime @default(now())
+  featured Boolean @default(false)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, key])
+  @@index([userId, unlockedAt])
+}
 
 model StaffProfile {
   userId String @id
