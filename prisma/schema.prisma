@@ -29,6 +29,7 @@ model User {
   comments Comment[]
   reactions Reaction[]
   saves Save[]
+  stories Story[]
   sessions Session[]
   blocksMade Block[] @relation("blocksMade")
   blocksReceived Block[] @relation("blocksReceived")
@@ -155,4 +156,16 @@ model Save {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
   @@id([userId, postId])
+}
+
+model Story {
+  id String @id @default(cuid())
+  authorId String
+  mediaUrl String?
+  text String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  @@index([authorId, createdAt])
+  @@index([expiresAt])
 }
