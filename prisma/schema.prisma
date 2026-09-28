@@ -143,6 +143,7 @@ enum PayoutStatus {
 }
 enum StaffRole {
   OWNER
+  CO_OWNER
   EXECUTIVE_ADMIN
   TRUST_SAFETY
   MODERATOR
