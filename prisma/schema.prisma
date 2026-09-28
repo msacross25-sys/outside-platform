@@ -195,6 +195,7 @@ model User {
   mutesMade Mute[] @relation("mutesMade")
   mutesReceived Mute[] @relation("mutesReceived")
   reports Report[] @relation("reportsFiled")
+  appeals Appeal[] @relation("appealUser")
   notifications Notification[] @relation("notificationRecipient")
   notificationsSent Notification[] @relation("notificationActor")
   conversationMembers ConversationMember[]
@@ -801,6 +802,21 @@ model ModerationActionLog {
   actor User @relation("moderationActor", fields: [actorId], references: [id], onDelete: Restrict)
   @@index([targetUserId, createdAt])
   @@index([targetPostId, createdAt])
+}
+
+model Appeal {
+  id String @id @default(cuid())
+  userId String
+  moderationActionId String?
+  reason String
+  status String @default("OPEN")
+  reviewerId String?
+  resolution String?
+  createdAt DateTime @default(now())
+  reviewedAt DateTime?
+  user User @relation("appealUser", fields: [userId], references: [id], onDelete: Cascade)
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
 }
 
 model AuditLog {
