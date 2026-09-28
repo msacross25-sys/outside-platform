@@ -1,0 +1,2 @@
+import { FeaturePage } from "@/components/FeaturePage";
+export default function Live(){return <FeaturePage eyebrow="OUTSiiDE Live" title="Go live your way." copy="Solo, multi-guest and community livestreaming with safety and creator tools built in." items={["Solo + multi-guest Live","Guest queue + moderators","Q&A, polls + pinned comments","Lenses, beauty, filters + backgrounds","Gifts, tips + subscriber Live","Replay, clips + scheduled Live","Pre-Live camera/mic preview","Live safety + reporting"]}/>;}
