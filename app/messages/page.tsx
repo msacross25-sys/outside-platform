@@ -1,2 +1,3 @@
-import { FeaturePage } from "@/components/FeaturePage";
-export default function Messages(){return <FeaturePage eyebrow="Messages" title="Talk privately." copy="Direct and group conversations with privacy controls." items={["1:1 + group DMs","Voice notes + media","Replies + reactions","Message requests","Disappearing media modes","DM privacy controls"]}/>;}
+import { Shell } from "@/components/Shell";
+import { MessageInbox } from "@/components/MessageInbox";
+export default function Messages(){return <Shell><section className="page"><span className="eyebrow">Messages</span><h1>Your conversations.</h1><p className="lede">Private one-to-one messaging. Group chat, voice notes and disappearing media come later.</p><MessageInbox/></section></Shell>}
