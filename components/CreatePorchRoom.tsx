@@ -1,0 +1,8 @@
+"use client";
+import { FormEvent,useState } from "react";
+import { useRouter } from "next/navigation";
+export function CreatePorchRoom(){
+ const router=useRouter();const [error,setError]=useState("");
+ async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();setError("");const f=new FormData(e.currentTarget);const payload={title:f.get("title"),description:f.get("description"),scheduledFor:f.get("scheduledFor")||null,roomType:f.get("roomType"),stageSize:Number(f.get("stageSize"))};const r=await fetch("/api/porch",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)});const d=await r.json();if(!r.ok){setError(d.error??"Unable to create room.");return}router.push("/porch/"+d.room.slug)}
+ return <form className="createRoomForm" onSubmit={submit}><label>Room title<input name="title" minLength={3} maxLength={100} required/></label><label>Description<textarea name="description" maxLength={700}/></label><label>Room type<select name="roomType" defaultValue="VIDEO"><option value="VIDEO">Video Room</option><option value="VOICE">Voice Room</option></select></label><label>Stage size<select name="stageSize" defaultValue="1"><option value="1">1-on-1</option><option value="5">5 seats</option><option value="7">7 seats · maximum</option></select></label><label>Schedule for later<input name="scheduledFor" type="datetime-local"/></label><button type="submit">Create Room</button>{error&&<p>{error}</p>}</form>
+}
