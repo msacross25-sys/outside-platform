@@ -1,17 +1,14 @@
+import Link from "next/link";
 import { Shell } from "@/components/Shell";
+import { db } from "@/lib/db";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  const posts=await db.post.findMany({where:{visibility:"PUBLIC"},orderBy:{createdAt:"desc"},take:25,include:{author:{select:{username:true,displayName:true}},_count:{select:{reactions:true,comments:true,saves:true}}}});
   return <Shell><section className="feed">
     <div className="feedTabs"><b>For You</b><span>Following</span><span>Circles</span><span>Local</span></div>
-    <article className="videoCard">
-      <div className="videoStage">
-        <div className="wordmark">OUTS<span>ii</span>DE</div>
-        <h1>Come OUTSiiDE.</h1>
-        <p>A social platform built for watching, creating, talking and belonging.</p>
-        <button>Start exploring</button>
-      </div>
-      <div className="actions"><span>♡ Like</span><span>◯ Comment</span><span>↗ Share</span><span>☆ Save</span></div>
-    </article>
+    {posts.length===0?<article className="videoCard"><div className="videoStage"><div className="wordmark">OUTS<span>ii</span>DE</div><h1>Come OUTSiiDE.</h1><p>The feed is ready for its first real posts.</p><Link className="create" href="/signup">Create an account</Link></div></article>:posts.map(post=><article className="feedPost" key={post.id}><div className="postAuthor"><Link href={"/u/"+post.author.username}><b>{post.author.displayName}</b><span>@{post.author.username}</span></Link></div><p>{post.caption}</p><div className="actions"><span>♡ {post._count.reactions}</span><span>◯ {post._count.comments}</span><span>☆ {post._count.saves}</span><span>↗ Share</span></div></article>)}
     <div className="control"><b>You're in control.</b><span>Why am I seeing this? · Not interested · Show me more like this</span></div>
   </section></Shell>;
 }
