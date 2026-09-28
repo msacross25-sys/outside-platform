@@ -1,0 +1,2 @@
+import { FeaturePage } from "@/components/FeaturePage";
+export default function Studio(){return <FeaturePage eyebrow="Creator Studio" title="Know what's working." copy="Content, audience, Live, Porch, Circles, earnings and moderation in one creator workspace." items={["Views + watch time","Completion + rewatch rate","Audience growth","Traffic sources","Live + Porch analytics","Earnings + payout overview"]}/>;}
