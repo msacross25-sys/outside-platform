@@ -170,6 +170,7 @@ model User {
   viewingProgress ViewingProgress?
   viewingSessions ViewingSession[]
   stageRequests PorchStageRequest[]
+  liveSignals LiveSignal[]
   coinWallet CoinWallet?
   sentGiftTransactions GiftTransaction[] @relation("giftSender")
   receivedGiftTransactions GiftTransaction[] @relation("giftRecipient")
@@ -417,6 +418,21 @@ model PorchMember {
   @@index([userId])
 }
 
+
+model LiveSignal {
+  id String @id @default(cuid())
+  roomId String
+  senderId String
+  targetUserId String?
+  type String
+  payloadJson String
+  createdAt DateTime @default(now())
+  room PorchRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  sender User @relation("signalSender", fields: [senderId], references: [id], onDelete: Cascade)
+  target User? @relation("signalTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+  @@index([roomId, createdAt])
+  @@index([targetUserId, createdAt])
+}
 
 model PorchStageRequest {
   id String @id @default(cuid())
