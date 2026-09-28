@@ -71,6 +71,12 @@ enum PorchRoomType {
   VIDEO
   VOICE
 }
+enum PorchStageRequestStatus {
+  PENDING
+  APPROVED
+  DECLINED
+}
+
 enum PorchRole {
   HOST
   COHOST
@@ -163,6 +169,7 @@ model User {
   creatorProfile CreatorProfile?
   viewingProgress ViewingProgress?
   viewingSessions ViewingSession[]
+  stageRequests PorchStageRequest[]
   coinWallet CoinWallet?
   sentGiftTransactions GiftTransaction[] @relation("giftSender")
   receivedGiftTransactions GiftTransaction[] @relation("giftRecipient")
@@ -395,6 +402,7 @@ model PorchRoom {
   roomRestrictions PorchRoomRestriction[]
   giftTransactions GiftTransaction[]
   viewingSessions ViewingSession[]
+  stageRequests PorchStageRequest[]
   @@index([status, scheduledFor])
 }
 
@@ -409,6 +417,19 @@ model PorchMember {
   @@index([userId])
 }
 
+
+model PorchStageRequest {
+  id String @id @default(cuid())
+  roomId String
+  userId String
+  status PorchStageRequestStatus @default(PENDING)
+  requestedAt DateTime @default(now())
+  reviewedAt DateTime?
+  room PorchRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([roomId, userId])
+  @@index([roomId, status, requestedAt])
+}
 
 model PorchRoomRestriction {
   roomId String
@@ -429,6 +450,7 @@ model HostApplication {
   appliedAt DateTime @default(now())
   reviewedAt DateTime?
   reviewedById String?
+  agreementAcceptedAt DateTime?
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([status, appliedAt])
 }
