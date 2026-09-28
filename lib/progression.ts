@@ -12,5 +12,5 @@ export function levelFor(followers:number,hours:number,hostApproved=false){
  if(hostApproved&&followers>=2500&&hours>=3000&&earned?.key==="HOST_ELIGIBLE")return {...earned,key:"HOST" as const,name:"Host"};
  return earned;
 }
-export function nextLevel(followers:number,hours:number){return CREATOR_LEVELS.find(x=>followers<x.followers||hours<x.hours)??null}
+export function nextLevel(followers:number,hours:number){const level=CREATOR_LEVELS.find(x=>followers<x.followers||hours<x.hours);return level?{...level,followersLeft:Math.max(0,level.followers-followers),hoursLeft:Math.max(0,level.hours-hours)}:null}
 export function creatorShareFor(followers:number,hours:number,hostApproved=false){return levelFor(followers,hours,hostApproved)?.creatorShare??30}
