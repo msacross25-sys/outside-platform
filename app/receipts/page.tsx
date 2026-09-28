@@ -1,0 +1,2 @@
+import { FeaturePage } from "@/components/FeaturePage";
+export default function Receipts(){return <FeaturePage eyebrow="Receipts" title="Bring the source." copy="Attach sources, documents, screenshots, dates, updates and corrections to serious posts." items={["Source attachments","Dated updates","Visible corrections","Original post history","Context without a truth-guarantee badge","Reporting + moderation"]}/>;}
