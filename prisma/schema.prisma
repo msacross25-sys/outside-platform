@@ -87,8 +87,10 @@ enum LiveVisibility {
 
 enum PorchStageRequestStatus {
   PENDING
+  INVITED
   APPROVED
   DECLINED
+  CANCELLED
 }
 
 enum PorchRole {
