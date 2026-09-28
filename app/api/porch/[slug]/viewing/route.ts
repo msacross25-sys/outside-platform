@@ -10,7 +10,7 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
  if(liveMinutes<30)return NextResponse.json({error:"Verified viewing time starts after the room has been live for at least 30 minutes.",minutesRemaining:Math.ceil(30-liveMinutes)},{status:403});
  if(room.members.some(x=>x.userId===me.id))return NextResponse.json({error:"Watching your own live does not count toward verified viewing hours."},{status:403});
  const body=await request.json().catch(()=>null),sessionId=String(body?.sessionId??"");
- if(!sessionId){const session=await db.viewingSession.create({data:{userId:me.id,roomId:room.id}});return NextResponse.json({sessionId:session.id,verifiedSeconds:0});}
+ if(!sessionId){const active=await db.viewingSession.findFirst({where:{userId:me.id,endedAt:null,eligible:true},orderBy:{startedAt:"desc"}});if(active){if(active.roomId===room.id)return NextResponse.json({sessionId:active.id,verifiedSeconds:active.verifiedSeconds});return NextResponse.json({error:"Verified viewing is already active in another live."},{status:409})}const session=await db.viewingSession.create({data:{userId:me.id,roomId:room.id}});return NextResponse.json({sessionId:session.id,verifiedSeconds:0});}
  const session=await db.viewingSession.findFirst({where:{id:sessionId,userId:me.id,roomId:room.id,endedAt:null,eligible:true}});
  if(!session)return NextResponse.json({error:"Viewing session unavailable."},{status:404});
  const now=new Date(),elapsed=Math.floor((now.getTime()-session.lastHeartbeatAt.getTime())/1000);
