@@ -71,6 +71,12 @@ enum PorchRoomType {
   VIDEO
   VOICE
 }
+enum LiveVisibility {
+  PUBLIC
+  FOLLOWERS
+  PRIVATE
+}
+
 enum PorchStageRequestStatus {
   PENDING
   APPROVED
@@ -395,6 +401,21 @@ model PorchRoom {
   roomType PorchRoomType @default(VIDEO)
   stageSize Int @default(1)
   screenSharing Boolean @default(false)
+  category String?
+  visibility LiveVisibility @default(PUBLIC)
+  guestRequestsEnabled Boolean @default(true)
+  giftsEnabled Boolean @default(true)
+  chatEnabled Boolean @default(true)
+  followersOnlyChat Boolean @default(false)
+  slowModeSeconds Int @default(0)
+  coverImageUrl String?
+  defaultEffect String?
+  defaultBackdrop String?
+  replayVisible Boolean @default(true)
+  replayUrl String?
+  peakViewers Int @default(0)
+  totalViewers Int @default(0)
+  reactionCount Int @default(0)
   startedAt DateTime?
   endedAt DateTime?
   createdAt DateTime @default(now())
