@@ -1,0 +1,6 @@
+import { NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { currentUser } from "@/lib/session";
+async function target(username:string){return db.user.findUnique({where:{username:username.toLowerCase()},select:{id:true}})}
+export async function POST(_:Request,{params}:{params:{username:string}}){const me=await currentUser();if(!me)return NextResponse.json({error:"Sign in required."},{status:401});const u=await target(params.username);if(!u)return NextResponse.json({error:"User not found."},{status:404});if(u.id===me.id)return NextResponse.json({error:"You cannot block yourself."},{status:400});await db.$transaction([db.block.upsert({where:{blockerId_blockedId:{blockerId:me.id,blockedId:u.id}},create:{blockerId:me.id,blockedId:u.id},update:{}}),db.follow.deleteMany({where:{OR:[{followerId:me.id,followingId:u.id},{followerId:u.id,followingId:me.id}]}})]);return NextResponse.json({blocked:true});}
+export async function DELETE(_:Request,{params}:{params:{username:string}}){const me=await currentUser();if(!me)return NextResponse.json({error:"Sign in required."},{status:401});const u=await target(params.username);if(!u)return NextResponse.json({error:"User not found."},{status:404});await db.block.deleteMany({where:{blockerId:me.id,blockedId:u.id}});return NextResponse.json({blocked:false});}
