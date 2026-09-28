@@ -1,0 +1,7 @@
+import {redirect} from "next/navigation";
+import {Shell} from "@/components/Shell";
+import {CreatorWallet} from "@/components/CreatorWallet";
+import {currentUser} from "@/lib/session";
+import {db} from "@/lib/db";
+import {verifiedHours,levelFor,nextLevel} from "@/lib/progression";
+export default async function CreatorCenter(){const me=await currentUser();if(!me)redirect("/login");const followers=await db.follow.count({where:{followingId:me.id}});const progress=await db.viewingProgress.findUnique({where:{userId:me.id}});const app=await db.hostApplication.findUnique({where:{userId:me.id}});const hours=verifiedHours(progress?.verifiedSeconds??0);const approved=app?.status==="APPROVED";const level=levelFor(followers,hours,approved);const next=nextLevel(followers,hours);return <Shell><section className="pageStack"><div className="hero"><span className="eyebrow">OUTSiiDE Creator Center</span><h1>{level?.name??"Build your Creator status"}</h1><p>{followers.toLocaleString()} followers · {hours.toFixed(1)} verified viewing hours</p><p>Host status: {app?.status?.toLowerCase()??"not applied"}</p>{next&&<p>Next: {next.name} · {next.followersLeft.toLocaleString()} followers and {next.hoursLeft.toFixed(1)} verified hours remaining.</p>}</div><CreatorWallet/></section></Shell>}
