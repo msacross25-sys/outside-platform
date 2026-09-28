@@ -1,6 +1,6 @@
 export const COINS_PER_DOLLAR=65;
-export const CREATOR_SHARE_PERCENT=30;
-export const PLATFORM_SHARE_PERCENT=70;
+export const STANDARD_CREATOR_SHARE_PERCENT=30;
+export const ADVANCED_CREATOR_SHARE_PERCENT=40;
 export const MINIMUM_PAYOUT_CENTS=6500;
 
 export const GIFTS=[
@@ -27,4 +27,4 @@ export const GIFTS=[
 ] as const;
 
 export function giftByKey(key:string){return GIFTS.find(g=>g.key===key)}
-export function splitGift(valueCents:number){return {creatorShareCents:Math.floor(valueCents*CREATOR_SHARE_PERCENT/100),platformShareCents:valueCents-Math.floor(valueCents*CREATOR_SHARE_PERCENT/100)}}
+export function splitGift(valueCents:number,creatorSharePercent=STANDARD_CREATOR_SHARE_PERCENT){const creatorShareCents=Math.floor(valueCents*creatorSharePercent/100);return {creatorShareCents,platformShareCents:valueCents-creatorShareCents}}
