@@ -1,3 +1,1 @@
-import { Shell } from "@/components/Shell";
-import { MessageInbox } from "@/components/MessageInbox";
-export default function Messages(){return <Shell><section className="page"><span className="eyebrow">Messages</span><h1>Your conversations.</h1><p className="lede">Private one-to-one messaging. Group chat, voice notes and disappearing media come later.</p><MessageInbox/></section></Shell>}
+import { Shell } from "@/components/Shell";import { MessageInbox } from "@/components/MessageInbox";export default function Messages(){return <Shell><section className="page messagesPage"><p className="neonEyebrow">MESSAGES</p><h1>Your people. Your conversations.</h1><p className="lede">Private conversations with OUTSiiDE safety controls built in.</p><div className="messageShell"><MessageInbox/></div></section></Shell>}
