@@ -21,7 +21,7 @@ export async function currentUser() {
   if (!token) return null;
   const session = await db.session.findUnique({
     where: { tokenHash: digest(token) },
-    include: { user: { select: { id:true,email:true,username:true,displayName:true,bio:true,avatarUrl:true,status:true } } }
+    include: { user: { select: { id:true,email:true,username:true,displayName:true,bio:true,avatarUrl:true,profileVideoUrl:true,privacy:true,messagePrivacy:true,commentPrivacy:true,mentionPrivacy:true,liveInvitePrivacy:true,hideActivity:true,hideConnections:true,verified:true,status:true } } }
   });
   if (!session || session.expiresAt <= new Date() || session.user.status !== "ACTIVE") return null;
   return session.user;
