@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { currentUser } from "@/lib/session";
 import { giftByKey,splitGift } from "@/lib/gifts";
-import { creatorShareFor,verifiedHours } from "@/lib/progression";
+import { verifiedHours } from "@/lib/progression";
 
 export async function POST(request:Request,{params}:{params:Promise<{slug:string}>}){
  const {slug}=await params;const me=await currentUser();if(!me)return NextResponse.json({error:"Sign in required."},{status:401});
@@ -14,7 +14,7 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
  const senderMember=room.members.find(m=>m.userId===me.id);if(!senderMember)return NextResponse.json({error:"Join the room before sending a gift."},{status:403});
  const recipient=room.members.find(m=>m.role==="HOST");if(!recipient)return NextResponse.json({error:"Host not found."},{status:404});
  if(recipient.userId===me.id)return NextResponse.json({error:"You cannot send a gift to yourself."},{status:400});
- const [recipientFollowers,recipientProgress]=await Promise.all([db.follow.count({where:{followingId:recipient.userId}}),db.viewingProgress.findUnique({where:{userId:recipient.userId}})]);const recipientHours=verifiedHours(recipientProgress?.verifiedSeconds??0);const creatorSharePercent=creatorShareFor(recipientFollowers,recipientHours);const split=splitGift(gift.valueCents,creatorSharePercent);
+ const [recipientFollowers,recipientProgress,hostApplication]=await Promise.all([db.follow.count({where:{followingId:recipient.userId}}),db.viewingProgress.findUnique({where:{userId:recipient.userId}}),db.hostApplication.findUnique({where:{userId:recipient.userId},select:{status:true}})]);const recipientHours=verifiedHours(recipientProgress?.verifiedSeconds??0);const creatorSharePercent=hostApplication?.status==="APPROVED"&&recipientFollowers>=5000&&recipientHours>=4000?40:30;const split=splitGift(gift.valueCents,creatorSharePercent);
  try{
   const transaction=await db.$transaction(async tx=>{
    const wallet=await tx.coinWallet.findUnique({where:{userId:me.id}});
