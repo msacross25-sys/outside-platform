@@ -74,6 +74,13 @@ enum PorchRole {
   SPEAKER
   LISTENER
 }
+
+enum HostApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REMOVED
+}
 enum StaffRole {
   OWNER
   EXECUTIVE_ADMIN
