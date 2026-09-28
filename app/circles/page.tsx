@@ -1,3 +1,1 @@
-import { Shell } from "@/components/Shell";
-import { CircleDirectory } from "@/components/CircleDirectory";
-export default function Circles(){return <Shell><section className="page"><span className="eyebrow">Circles</span><h1>Find your people.</h1><p className="lede">Build communities with their own members, conversations, Lives and Porch rooms.</p><CircleDirectory/></section></Shell>}
+import { Shell } from "@/components/Shell";import { CircleDirectory } from "@/components/CircleDirectory";export default function Circles(){return <Shell><section className="page featureHub"><p className="neonEyebrow">OUTSiiDE CIRCLES</p><h1>Find your people.</h1><p className="lede">Your communities for posts, conversations, Lives, Porch rooms and events.</p><div className="featureRibbon"><span>◎ Public</span><span>◉ Private</span><span>✦ Invite Only</span><span>♢ Community</span></div><CircleDirectory/></section></Shell>}
