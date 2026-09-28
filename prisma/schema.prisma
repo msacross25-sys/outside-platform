@@ -192,7 +192,7 @@ model User {
   creatorProfile CreatorProfile?
   viewingProgress ViewingProgress?
   viewingSessions ViewingSession[]
-  viewerPresences LiveViewerPresence[]
+  liveViewerPresences LiveViewerPresence[]
   stageRequests PorchStageRequest[]
   liveSignalsSent LiveSignal[] @relation("signalSender")
   liveSignalsReceived LiveSignal[] @relation("signalTarget")
