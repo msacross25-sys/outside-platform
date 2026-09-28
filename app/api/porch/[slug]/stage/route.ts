@@ -35,8 +35,6 @@ export async function PATCH(request:Request,{params}:{params:Promise<{slug:strin
  if(!["APPROVE","INVITE","DECLINE"].includes(action))return NextResponse.json({error:"Invalid stage action."},{status:400});
  if(action==="INVITE"){await db.porchStageRequest.upsert({where:{roomId_userId:{roomId:x.room.id,userId}},create:{roomId:x.room.id,userId,status:"INVITED",reviewedAt:new Date()},update:{status:"INVITED",reviewedAt:new Date()}});return NextResponse.json({status:"INVITED"});}
  if(action==="DECLINE"){await db.porchStageRequest.updateMany({where:{roomId:x.room.id,userId},data:{status:"DECLINED",reviewedAt:new Date()}});return NextResponse.json({status:"DECLINED"});}
- const stageCount=x.room.members.filter(m=>["HOST","COHOST","SPEAKER"].includes(m.role)).length;
- if(stageCount>=x.room.stageSize)return NextResponse.json({error:`Stage is full (${x.room.stageSize} max).`},{status:409});
- await db.$transaction([db.porchMember.update({where:{roomId_userId:{roomId:x.room.id,userId}},data:{role:"SPEAKER"}}),db.porchStageRequest.upsert({where:{roomId_userId:{roomId:x.room.id,userId}},create:{roomId:x.room.id,userId,status:"APPROVED",reviewedAt:new Date()},update:{status:"APPROVED",reviewedAt:new Date()}})]);
+ const claimed=await db.$transaction(async tx=>{const count=await tx.porchMember.count({where:{roomId:x.room.id,role:{in:["HOST","COHOST","SPEAKER"]}}});if(count>=x.room.stageSize)return false;await tx.porchMember.update({where:{roomId_userId:{roomId:x.room.id,userId}},data:{role:"SPEAKER"}});await tx.porchStageRequest.upsert({where:{roomId_userId:{roomId:x.room.id,userId}},create:{roomId:x.room.id,userId,status:"APPROVED",reviewedAt:new Date()},update:{status:"APPROVED",reviewedAt:new Date()}});return true},{isolationLevel:"Serializable"});if(!claimed)return NextResponse.json({error:"Stage is full."},{status:409});
  return NextResponse.json({role:"SPEAKER"});
 }
