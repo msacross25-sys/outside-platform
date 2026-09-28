@@ -606,6 +606,13 @@ model HostApplication {
   reviewedAt DateTime?
   reviewedById String?
   agreementAcceptedAt DateTime?
+  identityVerificationStatus String @default("NOT_STARTED")
+  identityProviderRef String?
+  identityVerifiedAt DateTime?
+  taxStatus String @default("NOT_STARTED")
+  taxProviderRef String?
+  taxCompletedAt DateTime?
+  payoutEnabled Boolean @default(false)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([status, appliedAt])
 }
