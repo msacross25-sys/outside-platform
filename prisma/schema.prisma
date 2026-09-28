@@ -131,6 +131,7 @@ model User {
   sentMessages Message[] @relation("messageSender")
   circleMemberships CircleMember[]
   porchMemberships PorchMember[]
+  hostApplication HostApplication?
   receipts Receipt[]
   staffProfile StaffProfile?
   moderationActions ModerationActionLog[] @relation("moderationActor")
