@@ -1,0 +1,2 @@
+"use client";import {useEffect,useState} from "react";
+export function HQCoOwners(){const [items,setItems]=useState<any[]>([]);useEffect(()=>{fetch("/api/hq/co-owners").then(r=>r.ok?r.json():null).then(d=>d&&setItems(d.coOwners))},[]);return <section className="hqPanel"><div className="hqPanelHead"><div><span className="eyebrow">Main Owner Only</span><h2>Co-Owner Authority</h2></div><b>{items.filter(x=>x.active).length}/4 active</b></div><p>Co-Owner seats are assigned by the Main Owner. Financial authority remains separate.</p></section>}
