@@ -201,6 +201,8 @@ model User {
   creatorPayouts CreatorPayout[]
   receipts Receipt[]
   badges UserBadge[]
+  liveMessages LiveMessage[]
+  liveReactions LiveReaction[]
   staffProfile StaffProfile?
   moderationActions ModerationActionLog[] @relation("moderationActor")
   auditEvents AuditLog[] @relation("auditActor")
@@ -445,6 +447,8 @@ model PorchRoom {
   viewingSessions ViewingSession[]
   stageRequests PorchStageRequest[]
   liveSignals LiveSignal[]
+  liveMessages LiveMessage[]
+  liveReactions LiveReaction[]
   @@index([status, scheduledFor])
 }
 
@@ -459,6 +463,31 @@ model PorchMember {
   @@index([userId])
 }
 
+
+model LiveMessage {
+  id String @id @default(cuid())
+  roomId String
+  userId String
+  body String
+  pinned Boolean @default(false)
+  createdAt DateTime @default(now())
+  room PorchRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([roomId, createdAt])
+  @@index([roomId, pinned])
+}
+
+model LiveReaction {
+  id String @id @default(cuid())
+  roomId String
+  userId String
+  emoji String @default("❤️")
+  createdAt DateTime @default(now())
+  room PorchRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([roomId, createdAt])
+  @@index([userId, createdAt])
+}
 
 model LiveSignal {
   id String @id @default(cuid())
