@@ -1,21 +1,5 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { currentUser } from "@/lib/session";
-
-export async function POST(_:Request,{params}:{params:{username:string}}){
- const me=await currentUser();
- if(!me)return NextResponse.json({error:"Sign in required."},{status:401});
- const target=await db.user.findUnique({where:{username:params.username.toLowerCase()},select:{id:true}});
- if(!target)return NextResponse.json({error:"User not found."},{status:404});
- if(target.id===me.id)return NextResponse.json({error:"You cannot follow yourself."},{status:400});
- await db.follow.upsert({where:{followerId_followingId:{followerId:me.id,followingId:target.id}},create:{followerId:me.id,followingId:target.id},update:{}});
- return NextResponse.json({following:true});
-}
-export async function DELETE(_:Request,{params}:{params:{username:string}}){
- const me=await currentUser();
- if(!me)return NextResponse.json({error:"Sign in required."},{status:401});
- const target=await db.user.findUnique({where:{username:params.username.toLowerCase()},select:{id:true}});
- if(!target)return NextResponse.json({error:"User not found."},{status:404});
- await db.follow.deleteMany({where:{followerId:me.id,followingId:target.id}});
- return NextResponse.json({following:false});
-}
+export async function POST(_:Request,{params}:{params:{username:string}}){const me=await currentUser();if(!me)return NextResponse.json({error:"Sign in required."},{status:401});const target=await db.user.findUnique({where:{username:params.username.toLowerCase()},select:{id:true,status:true}});if(!target||target.status!=="ACTIVE")return NextResponse.json({error:"User not found."},{status:404});if(target.id===me.id)return NextResponse.json({error:"You cannot follow yourself."},{status:400});const blocked=await db.block.count({where:{OR:[{blockerId:me.id,blockedId:target.id},{blockerId:target.id,blockedId:me.id}]}});if(blocked)return NextResponse.json({error:"Follow unavailable."},{status:403});const existing=await db.follow.findUnique({where:{followerId_followingId:{followerId:me.id,followingId:target.id}}});if(!existing)await db.$transaction([db.follow.create({data:{followerId:me.id,followingId:target.id}}),db.notification.create({data:{recipientId:target.id,actorId:me.id,type:"FOLLOW"}})]);return NextResponse.json({following:true});}
+export async function DELETE(_:Request,{params}:{params:{username:string}}){const me=await currentUser();if(!me)return NextResponse.json({error:"Sign in required."},{status:401});const target=await db.user.findUnique({where:{username:params.username.toLowerCase()},select:{id:true}});if(!target)return NextResponse.json({error:"User not found."},{status:404});await db.follow.deleteMany({where:{followerId:me.id,followingId:target.id}});return NextResponse.json({following:false});}
