@@ -21,10 +21,22 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
  const member=await db.porchMember.findUnique({where:{roomId_userId:{roomId:room.id,userId}}});
  if(!member)return NextResponse.json({error:"That person must be in the room first."},{status:404});
  if(member.role==="MODERATOR")return NextResponse.json({moderator:true});
- const count=await db.porchMember.count({where:{roomId:room.id,role:"MODERATOR"}});
- if(count>=5)return NextResponse.json({error:"This room already has the maximum of 5 moderators."},{status:409});
- await db.porchMember.update({where:{roomId_userId:{roomId:room.id,userId}},data:{role:"MODERATOR"}});
- return NextResponse.json({moderator:true,count:count+1,limit:5});
+ try{
+  const result=await db.$transaction(async tx=>{
+   const current=await tx.porchMember.findUnique({where:{roomId_userId:{roomId:room.id,userId}}});
+   if(!current)throw new Error("NOT_MEMBER");
+   if(current.role==="MODERATOR")return {moderator:true,count:await tx.porchMember.count({where:{roomId:room.id,role:"MODERATOR"}})};
+   const count=await tx.porchMember.count({where:{roomId:room.id,role:"MODERATOR"}});
+   if(count>=5)throw new Error("MOD_LIMIT");
+   await tx.porchMember.update({where:{roomId_userId:{roomId:room.id,userId}},data:{role:"MODERATOR"}});
+   return {moderator:true,count:count+1};
+  },{isolationLevel:"Serializable"});
+  return NextResponse.json({...result,limit:5});
+ }catch(error){
+  if(error instanceof Error&&error.message==="NOT_MEMBER")return NextResponse.json({error:"That person must be in the room first."},{status:404});
+  if(error instanceof Error&&error.message==="MOD_LIMIT")return NextResponse.json({error:"This room already has the maximum of 5 moderators."},{status:409});
+  return NextResponse.json({error:"Moderator assignment changed at the same time. Please try again."},{status:409});
+ }
 }
 export async function DELETE(request:Request,{params}:{params:Promise<{slug:string}>}){
  const {slug}=await params;const me=await currentUser();if(!me)return NextResponse.json({error:"Sign in required."},{status:401});
