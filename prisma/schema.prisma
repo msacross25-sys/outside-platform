@@ -13,6 +13,7 @@ enum MediaType { VIDEO IMAGE }
 enum ReactionType { LIKE }
 enum ReportStatus { OPEN REVIEWING RESOLVED DISMISSED }
 enum ReportReason { HARASSMENT HATE VIOLENCE SEXUAL_CONTENT SELF_HARM CHILD_SAFETY SPAM_SCAM IMPERSONATION PRIVACY OTHER }
+enum NotificationType { FOLLOW LIKE COMMENT }
 
 model User {
   id String @id @default(cuid())
@@ -36,6 +37,8 @@ model User {
   mutesMade Mute[] @relation("mutesMade")
   mutesReceived Mute[] @relation("mutesReceived")
   reports Report[] @relation("reportsFiled")
+  notifications Notification[] @relation("notificationRecipient")
+  notificationsSent Notification[] @relation("notificationActor")
   followers Follow[] @relation("following")
   following Follow[] @relation("followers")
 }
@@ -168,4 +171,19 @@ model Story {
   author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
   @@index([authorId, createdAt])
   @@index([expiresAt])
+}
+
+
+model Notification {
+  id String @id @default(cuid())
+  recipientId String
+  actorId String
+  type NotificationType
+  postId String?
+  readAt DateTime?
+  createdAt DateTime @default(now())
+  recipient User @relation("notificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor User @relation("notificationActor", fields: [actorId], references: [id], onDelete: Cascade)
+  @@index([recipientId, createdAt])
+  @@index([recipientId, readAt])
 }
