@@ -1,2 +1,3 @@
-import { FeaturePage } from "@/components/FeaturePage";
-export default function Create(){return <FeaturePage eyebrow="Create" title="Make something." copy="The creation hub for video, photos, Stories, Live, text, polls and Porch." items={["Record or upload","Trim, split + speed","Text, captions + voice-over","Filters, effects + sounds","Privacy + remix controls","Drafts + scheduling"]}/>;}
+import { Shell } from "@/components/Shell";
+import { PostComposer } from "@/components/PostComposer";
+export default function Create(){return <Shell><section className="page"><span className="eyebrow">Create</span><h1>Make something.</h1><p className="lede">Start with a post. Video, photos, Stories, Live and Porch creation are the next media layers.</p><PostComposer/><div className="grid"><article className="card">Video + photo upload</article><article className="card">Stories</article><article className="card">Go Live</article><article className="card">Start a Porch</article></div></section></Shell>;}
