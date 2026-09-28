@@ -8,9 +8,16 @@ export async function POST(request:Request){
  if(!other||other.id===me.id||other.status!=="ACTIVE")return NextResponse.json({error:"User not found."},{status:404});
  const blocked=await db.block.count({where:{OR:[{blockerId:me.id,blockedId:other.id},{blockerId:other.id,blockedId:me.id}]}});
  if(blocked)return NextResponse.json({error:"Conversation unavailable."},{status:403});
- const candidates=await db.conversation.findMany({where:{members:{some:{userId:me.id}}},select:{id:true,members:{select:{userId:true}}}});
- const found=candidates.find((x:{members:{userId:string}[];id:string})=>x.members.length===2&&x.members.some((m:{userId:string})=>m.userId===other.id));
+ const directKey=[me.id,other.id].sort().join(":");
+ const found=await db.conversation.findUnique({where:{directKey},select:{id:true}});
  if(found)return NextResponse.json({conversationId:found.id});
- const made=await db.conversation.create({data:{members:{create:[{userId:me.id},{userId:other.id}]}},select:{id:true}});
- return NextResponse.json({conversationId:made.id},{status:201});
+ try{
+  const made=await db.conversation.create({data:{directKey,members:{create:[{userId:me.id},{userId:other.id}]}},select:{id:true}});
+  return NextResponse.json({conversationId:made.id},{status:201});
+ }catch(error){
+  const existing=await db.conversation.findUnique({where:{directKey},select:{id:true}});
+  if(existing)return NextResponse.json({conversationId:existing.id});
+  console.error("Conversation creation failed",error);
+  return NextResponse.json({error:"Unable to start conversation right now."},{status:500});
+ }
 }
