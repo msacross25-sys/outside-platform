@@ -369,6 +369,17 @@ model PorchMember {
 }
 
 
+model HostApplication {
+  id String @id @default(cuid())
+  userId String @unique
+  status HostApplicationStatus @default(PENDING)
+  appliedAt DateTime @default(now())
+  reviewedAt DateTime?
+  reviewedById String?
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([status, appliedAt])
+}
+
 model Receipt {
   id String @id @default(cuid())
   postId String
