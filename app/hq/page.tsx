@@ -1,0 +1,2 @@
+import { FeaturePage } from "@/components/FeaturePage";
+export default function HQ(){return <FeaturePage eyebrow="Private · Owner HQ" title="Platform command center." copy="This route is a development placeholder. Production access must require staff authentication, MFA, role-based permissions and audit logging." items={["Command Center","Users + creators","Content, Live + Porch safety","Moderation, reports + appeals","Revenue, payouts + analytics","Staff roles + audit logs","Feature flags","System health + security"]}/>;}
