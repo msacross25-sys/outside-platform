@@ -88,6 +88,22 @@ enum CreatorStatus {
   PAUSED
   REMOVED
 }
+
+enum LedgerStatus {
+  PENDING
+  SETTLED
+  REFUNDED
+  CHARGEBACK
+  ADJUSTED
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+  CANCELLED
+}
 enum StaffRole {
   OWNER
   EXECUTIVE_ADMIN
@@ -141,6 +157,10 @@ model User {
   porchRestrictions PorchRoomRestriction[]
   hostApplication HostApplication?
   creatorProfile CreatorProfile?
+  coinWallet CoinWallet?
+  sentGiftTransactions GiftTransaction[] @relation("giftSender")
+  receivedGiftTransactions GiftTransaction[] @relation("giftRecipient")
+  creatorPayouts CreatorPayout[]
   receipts Receipt[]
   staffProfile StaffProfile?
   moderationActions ModerationActionLog[] @relation("moderationActor")
@@ -364,6 +384,7 @@ model PorchRoom {
   updatedAt DateTime @updatedAt
   members PorchMember[]
   roomRestrictions PorchRoomRestriction[]
+  giftTransactions GiftTransaction[]
   @@index([status, scheduledFor])
 }
 
@@ -409,6 +430,56 @@ model CreatorProfile {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CoinWallet {
+  userId String @id
+  balanceCoins BigInt @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model GiftTransaction {
+  id String @id @default(cuid())
+  senderId String
+  recipientId String
+  roomId String?
+  giftKey String
+  giftName String
+  coinCost BigInt
+  dollarValueCents Int
+  creatorShareCents Int
+  platformShareCents Int
+  paymentFeeCents Int @default(0)
+  appStoreFeeCents Int @default(0)
+  taxCents Int @default(0)
+  adjustmentCents Int @default(0)
+  status LedgerStatus @default(PENDING)
+  refundStatus String?
+  createdAt DateTime @default(now())
+  settledAt DateTime?
+  sender User @relation("giftSender", fields: [senderId], references: [id], onDelete: Restrict)
+  recipient User @relation("giftRecipient", fields: [recipientId], references: [id], onDelete: Restrict)
+  room PorchRoom? @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  @@index([senderId, createdAt])
+  @@index([recipientId, createdAt])
+  @@index([status, createdAt])
+}
+
+model CreatorPayout {
+  id String @id @default(cuid())
+  creatorId String
+  amountCents Int
+  status PayoutStatus @default(PENDING)
+  providerTransactionId String?
+  scheduledFor DateTime?
+  paidAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  creator User @relation(fields: [creatorId], references: [id], onDelete: Restrict)
+  @@index([creatorId, createdAt])
+  @@index([status, scheduledFor])
 }
 
 model Receipt {
