@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { BrandMark } from "@/components/BrandMark";
 
 const nav = [
   ["Home", "/"], ["Discover", "/discover"], ["Live", "/live"],
@@ -11,7 +12,7 @@ export function Shell({ children }: { children: ReactNode }) {
   return (
     <div className="shell">
       <aside className="sidebar">
-        <Link className="brand" href="/">OUTS<span>ii</span>DE</Link>
+        <BrandMark/>
         <p className="tagline">Come OUTSiiDE.</p>
         <nav>{nav.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}</nav>
         <Link className="create" href="/create">+ Create</Link>
