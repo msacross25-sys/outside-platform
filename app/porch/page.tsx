@@ -1,2 +1,3 @@
-import { FeaturePage } from "@/components/FeaturePage";
-export default function Porch(){return <FeaturePage eyebrow="The Porch" title="Pull up a chair." copy="Audio or video rooms for conversations that deserve more than a comment section." items={["Host, co-host, moderator + speaker roles","Raise hand + audience questions","Audio or video rooms","Polls + audience chat","Scheduled rooms + reminders","Recording, replay + clips"]}/>;}
+import { Shell } from "@/components/Shell";
+import { PorchDirectory } from "@/components/PorchDirectory";
+export default function Porch(){return <Shell><section className="page"><span className="eyebrow">The Porch</span><h1>Pull up a chair.</h1><p className="lede">Host conversations, storytimes, interviews, debates, podcasts and community talks. Create one now or schedule it for later.</p><PorchDirectory/></section></Shell>}
