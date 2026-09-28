@@ -43,18 +43,3 @@ body{background:radial-gradient(circle at 78% 8%,#132a78 0,transparent 28%),radi
 .accountNav form button{cursor:pointer;color:var(--muted)}
 @media(max-width:900px){.accountNav{margin-top:12px}}
 
-
-/* Responsive shell: keep navigation visible on narrow/tablet screens */
-html,body{max-width:100%;overflow-x:hidden}
-@media(max-width:900px){
-  .shell{display:block;min-width:0}
-  .sidebar{position:relative;top:auto;width:100%;height:auto;padding:18px 16px;border-right:0;border-bottom:1px solid var(--line);overflow:visible}
-  .sidebar nav{display:flex;gap:6px;margin:16px 0;overflow-x:auto;padding-bottom:4px}
-  .sidebar nav a{white-space:nowrap;flex:0 0 auto}
-  .sidebar .create{margin-bottom:10px}
-  .accountNav{margin-top:8px;display:flex;align-items:center;gap:6px;overflow-x:auto;padding:10px 0 0}
-  .accountNav a,.accountNav button{white-space:nowrap;width:auto}
-  .rail{display:none}
-  main{min-width:0;width:100%}
-  .feed,.page{width:100%;max-width:760px;padding:18px}
-}
