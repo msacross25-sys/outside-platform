@@ -196,6 +196,7 @@ model User {
   mutesReceived Mute[] @relation("mutesReceived")
   reports Report[] @relation("reportsFiled")
   appeals Appeal[] @relation("appealUser")
+  trustCases TrustCase[] @relation("trustCaseTarget")
   notifications Notification[] @relation("notificationRecipient")
   notificationsSent Notification[] @relation("notificationActor")
   conversationMembers ConversationMember[]
@@ -802,6 +803,37 @@ model ModerationActionLog {
   actor User @relation("moderationActor", fields: [actorId], references: [id], onDelete: Restrict)
   @@index([targetUserId, createdAt])
   @@index([targetPostId, createdAt])
+}
+
+model TrustCase {
+  id String @id @default(cuid())
+  targetUserId String
+  status String @default("OPEN")
+  severity String @default("LOW")
+  category String
+  summary String
+  reportId String?
+  assignedStaffId String?
+  accountLevel Boolean @default(false)
+  affectsCreatorStanding Boolean @default(false)
+  affectsHostStanding Boolean @default(false)
+  openedAt DateTime @default(now())
+  resolvedAt DateTime?
+  target User @relation("trustCaseTarget", fields: [targetUserId], references: [id], onDelete: Restrict)
+  events TrustCaseEvent[]
+  @@index([targetUserId, openedAt])
+  @@index([status, severity, openedAt])
+}
+
+model TrustCaseEvent {
+  id String @id @default(cuid())
+  caseId String
+  actorId String?
+  type String
+  note String
+  createdAt DateTime @default(now())
+  case TrustCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  @@index([caseId, createdAt])
 }
 
 model Appeal {
