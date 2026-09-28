@@ -1,0 +1,12 @@
+export type EffectKind="BEAUTY"|"FUN"|"BACKDROP";export type EffectTier="FREE"|"CREATOR"|"CREATOR_PLUS"|"HOST"|"ESTABLISHED"|"ADVANCED"|"EXCLUSIVE";
+export type LiveEffect={key:string;name:string;kind:EffectKind;tier:EffectTier;css?:string;coins?:number;seasonal?:boolean};
+export const LIVE_EFFECTS:LiveEffect[]=[
+{key:"natural-glow",name:"Natural Glow",kind:"BEAUTY",tier:"FREE",css:"brightness(1.06) saturate(1.05)"},{key:"soft-bloom",name:"Soft Bloom",kind:"BEAUTY",tier:"FREE",css:"brightness(1.08) contrast(.96)"},{key:"sun-kissed",name:"Sun Kissed",kind:"BEAUTY",tier:"FREE",css:"sepia(.12) saturate(1.12)"},{key:"fresh-face",name:"Fresh Face",kind:"BEAUTY",tier:"FREE",css:"brightness(1.1) saturate(.98)"},{key:"moonlight",name:"Moonlight",kind:"BEAUTY",tier:"FREE",css:"brightness(.98) contrast(1.06) saturate(.88)"},
+...["Crystal Glow","Butterfly","Rose Glow","Honey Light","Starlight","Prism","Glow Party","Galaxy Face","Royal Glow"].map((name,i)=>({key:name.toLowerCase().replaceAll(" ","-"),name,kind:"BEAUTY" as const,tier:(i<3?"CREATOR":i<6?"CREATOR_PLUS":"HOST") as EffectTier,css:"brightness(1.08) saturate(1.12)"})),
+{key:"outsiide-aura",name:"OUTSiiDE Aura",kind:"BEAUTY",tier:"EXCLUSIVE",css:"brightness(1.12) saturate(1.25) drop-shadow(0 0 12px currentColor)"},
+...["Puppy","Kitty","Bunny","Fox","Alien","Robot","Big Shades","Crown","Funny Face","Mask"].map((name,i)=>({key:name.toLowerCase().replaceAll(" ","-"),name,kind:"FUN" as const,tier:(i<5?"FREE":"CREATOR_PLUS") as EffectTier})),
+...["Forest","Campground","Ocean","Sunset","Open Sky"].map(name=>({key:name.toLowerCase().replaceAll(" ","-"),name,kind:"BACKDROP" as const,tier:"FREE" as const})),
+...["Mountain Lodge","Galaxy","Private Island","City Lights","Luxury Campfire","Rooftop Night","Tropical Villa","Fantasy Castle","Winter Cabin","Volcanic Adventure"].map((name,i)=>({key:name.toLowerCase().replaceAll(" ","-"),name,kind:"BACKDROP" as const,tier:(i<3?"CREATOR":i<6?"HOST":"ADVANCED") as EffectTier,coins:name==="Galaxy"?325:undefined})),
+...["Halloween","Holiday","Winter","Spring","Summer","Pride Color","Outdoor Adventure","Space"].map(name=>({key:"season-"+name.toLowerCase().replaceAll(" ","-"),name,kind:"FUN" as const,tier:"FREE" as const,seasonal:true}))
+];
+export const effectByKey=(key:string)=>LIVE_EFFECTS.find(x=>x.key===key);
