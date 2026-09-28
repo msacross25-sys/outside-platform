@@ -131,6 +131,7 @@ model User {
   sentMessages Message[] @relation("messageSender")
   circleMemberships CircleMember[]
   porchMemberships PorchMember[]
+  porchRestrictions PorchRoomRestriction[]
   hostApplication HostApplication?
   receipts Receipt[]
   staffProfile StaffProfile?
@@ -354,6 +355,7 @@ model PorchRoom {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   members PorchMember[]
+  roomRestrictions PorchRoomRestriction[]
   @@index([status, scheduledFor])
 }
 
@@ -368,6 +370,18 @@ model PorchMember {
   @@index([userId])
 }
 
+
+model PorchRoomRestriction {
+  roomId String
+  userId String
+  muted Boolean @default(false)
+  banned Boolean @default(false)
+  updatedAt DateTime @updatedAt
+  room PorchRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([roomId, userId])
+  @@index([userId])
+}
 
 model HostApplication {
   id String @id @default(cuid())
