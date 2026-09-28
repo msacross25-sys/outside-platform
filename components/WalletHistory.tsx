@@ -1,0 +1,5 @@
+"use client";
+import { useEffect,useState } from "react";
+type Data={gifts:{id:string;giftName:string;creatorShareCents:number;status:string;createdAt:string;refundStatus:string|null}[];payouts:{id:string;amountCents:number;status:string;scheduledFor:string|null;paidAt:string|null;createdAt:string}[]};
+const money=(c:number)=>new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(c/100);
+export function WalletHistory(){const [data,setData]=useState<Data|null>(null);useEffect(()=>{fetch("/api/wallet/history").then(r=>r.json()).then(setData)},[]);if(!data)return null;return <section className="walletCard"><span className="eyebrow">History</span><h2>Gifts & Payouts</h2>{data.gifts.length===0&&data.payouts.length===0?<p>No transactions yet.</p>:<div>{data.gifts.map(x=><p key={x.id}><b>{x.giftName}</b> · {money(x.creatorShareCents)} · {x.status.toLowerCase()} · {new Date(x.createdAt).toLocaleDateString()}</p>)}{data.payouts.map(x=><p key={x.id}><b>Payout</b> · {money(x.amountCents)} · {x.status.toLowerCase()} · {new Date(x.createdAt).toLocaleDateString()}</p>)}</div>}</section>}
