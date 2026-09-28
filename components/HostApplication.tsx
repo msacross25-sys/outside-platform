@@ -1,13 +1,12 @@
 "use client";
 import { useEffect,useState } from "react";
-
-type HostState={followers:number;eligible:boolean;application:{status:string}|null};
+type HostState={followers:number;verifiedViewingHours:number;goodStanding:boolean;eligible:boolean;application:{status:string}|null};
 export function HostApplication(){
- const [state,setState]=useState<HostState|null>(null);
- const [message,setMessage]=useState("");
- async function load(){const r=await fetch("/api/host/apply");if(r.ok)setState(await r.json())}
+ const [state,setState]=useState<HostState|null>(null),[message,setMessage]=useState("");
+ async function load(){const r=await fetch("/api/host/apply");const d=await r.json();if(r.ok)setState(d);else setMessage(d.error??"Unable to load host eligibility.")}
  useEffect(()=>{load()},[]);
  async function apply(){setMessage("");const r=await fetch("/api/host/apply",{method:"POST"});const data=await r.json();if(!r.ok){setMessage(data.error??"Unable to apply.");return}setMessage("Application submitted for review.");await load()}
- if(!state)return <p>Loading host eligibility…</p>;
- return <div className="featureCard"><h2>Host Requirements</h2><p>{state.followers} / 500 followers</p><p>Account in good standing</p><p>Application and approval required</p>{state.application?<p>Application status: <b>{state.application.status}</b></p>:null}<button disabled={!state.eligible||state.application?.status==="PENDING"||state.application?.status==="APPROVED"} onClick={apply}>Apply to Become a Host</button>{message&&<p>{message}</p>}</div>
+ if(!state)return <p>{message||"Loading host eligibility…"}</p>;
+ const blocked=state.application?.status==="PENDING"||state.application?.status==="APPROVED";
+ return <div className="featureCard"><span className="eyebrow">Host Progress</span><h2>{state.application?.status==="APPROVED"?"Host Approved":state.eligible?"Host Eligible":"Host Requirements"}</h2><p><b>Followers</b><br/>{state.followers.toLocaleString()} / 2,500</p><p><b>Verified Viewing Hours</b><br/>{state.verifiedViewingHours.toLocaleString(undefined,{maximumFractionDigits:1})} / 3,000</p><p><b>Account Standing</b><br/>{state.goodStanding?"✓ Good Standing":"Not in good standing"}</p><p><b>Host Application</b><br/>{state.application?.status??(state.eligible?"Eligible to Apply":"Not Yet Eligible")}</p><button disabled={!state.eligible||blocked} onClick={apply}>Apply to Become a Host</button>{message&&<p>{message}</p>}</div>
 }
