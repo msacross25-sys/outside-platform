@@ -9,7 +9,7 @@ export async function POST(request:Request){
  const blocked=await db.block.count({where:{OR:[{blockerId:me.id,blockedId:other.id},{blockerId:other.id,blockedId:me.id}]}});
  if(blocked)return NextResponse.json({error:"Conversation unavailable."},{status:403});
  const candidates=await db.conversation.findMany({where:{members:{some:{userId:me.id}}},select:{id:true,members:{select:{userId:true}}}});
- const found=candidates.find(x=>x.members.length===2&&x.members.some(m=>m.userId===other.id));
+ const found=candidates.find((x:{members:{userId:string}[];id:string})=>x.members.length===2&&x.members.some((m:{userId:string})=>m.userId===other.id));
  if(found)return NextResponse.json({conversationId:found.id});
  const made=await db.conversation.create({data:{members:{create:[{userId:me.id},{userId:other.id}]}},select:{id:true}});
  return NextResponse.json({conversationId:made.id},{status:201});
