@@ -57,6 +57,7 @@ enum NotificationType {
   BADGE_UNLOCKED
 }
 enum AccountPrivacy { PUBLIC PRIVATE }
+enum FollowRequestStatus { PENDING APPROVED DECLINED CANCELLED }
 enum ContactPrivacy { EVERYONE FOLLOWERS FRIENDS NOBODY }
 enum CirclePrivacy {
   PUBLIC
@@ -231,6 +232,8 @@ model User {
   auditEvents AuditLog[] @relation("auditActor")
   followers Follow[] @relation("following")
   following Follow[] @relation("followers")
+  followRequestsSent FollowRequest[] @relation("followRequestSender")
+  followRequestsReceived FollowRequest[] @relation("followRequestTarget")
 }
 
 model Session {
@@ -288,6 +291,19 @@ model Follow {
   following User @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
   @@id([followerId, followingId])
   @@index([followingId])
+}
+
+model FollowRequest {
+  id String @id @default(cuid())
+  requesterId String
+  targetId String
+  status FollowRequestStatus @default(PENDING)
+  createdAt DateTime @default(now())
+  reviewedAt DateTime?
+  requester User @relation("followRequestSender", fields: [requesterId], references: [id], onDelete: Cascade)
+  target User @relation("followRequestTarget", fields: [targetId], references: [id], onDelete: Cascade)
+  @@unique([requesterId, targetId])
+  @@index([targetId, status, createdAt])
 }
 
 model Post {
