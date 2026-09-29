@@ -7,7 +7,7 @@ export function LiveEffects({slug,host,onApply}:{slug:string;host:boolean;onAppl
  const [preview,setPreview]=useState<Effect|null>(null);
  const [message,setMessage]=useState("");
  useEffect(()=>{fetch("/api/effects").then(r=>r.ok?r.json():null).then(d=>setEffects(d?.effects??[]))},[]);
- const shown=effects.filter(e=>tab==="FREE"?e.tier==="FREE":tab==="NEW"?e.seasonal:tab==="FOR_HOST"?Boolean(e.coins):e.kind===tab);
+ const shown=effects.filter(e=>tab==="FREE"?e.tier==="FREE":tab==="NEW"?e.seasonal:tab==="FOR_HOST"?Boolean(e.coins):tab==="EXCLUSIVE"?e.tier==="EXCLUSIVE":e.kind===tab);
  async function send(effect:Effect){
   setMessage("");
   const r=await fetch("/api/porch/"+slug+"/effect-gift",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({effectKey:effect.key})});
@@ -16,9 +16,9 @@ export function LiveEffects({slug,host,onApply}:{slug:string;host:boolean;onAppl
  }
  return <section className="featureCard">
   <span className="eyebrow">OUTSiiDE EFFECTS</span>
-  <div>{["BEAUTY","FUN","BACKDROP","FOR_HOST","FREE","NEW"].map(name=><button key={name} onClick={()=>setTab(name)}>{name.replace("_"," ")}</button>)}</div>
+  <div>{["BEAUTY","FUN","BACKDROP","FOR_HOST","FREE","NEW","EXCLUSIVE"].map(name=><button key={name} onClick={()=>setTab(name)}>{name.replace("_"," ")}</button>)}</div>
   {preview&&<p>Preview: <b>{preview.name}</b> · {preview.tier}</p>}
-  <div>{shown.map(effect=><div key={effect.key}><b>{effect.name}</b> <span>{effect.tier}</span> <button onClick={()=>setPreview(effect)}>Preview</button>{host&&effect.unlocked&&<button onClick={()=>onApply(effect)}>Apply</button>}{!host&&effect.coins&&<button onClick={()=>send(effect)}>Send to Host · {effect.coins} coins</button>}</div>)}</div>
+  <div>{shown.map(effect=><div key={effect.key}><b>{effect.name}</b> <span>{effect.tier}</span> <button onClick={()=>setPreview(effect)}>Preview</button>{host&&effect.unlocked&&<button onClick={()=>onApply(effect)}>Apply</button>}{host&&!effect.unlocked&&<span> Locked · {effect.tier}</span>}{!host&&effect.coins&&<button onClick={()=>send(effect)}>Send to Host · {effect.coins} coins</button>}</div>)}</div>
   {host&&<button onClick={()=>onApply(null)}>Remove effect</button>}
   {message&&<p>{message}</p>}
  </section>;
