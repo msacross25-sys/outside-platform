@@ -43,14 +43,15 @@ jobs:
       - run: PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c "CREATE DATABASE outside_shadow;"
       - name: Generate migration
         run: |
-          mkdir -p prisma/migrations/20260929212500_sync_current_schema
           npx prisma migrate diff \
             --from-migrations prisma/migrations \
             --to-schema-datamodel prisma/schema.prisma \
             --shadow-database-url "$SHADOW_DATABASE_URL" \
             --script \
-            --output prisma/migrations/20260929212500_sync_current_schema/migration.sql
-          test -s prisma/migrations/20260929212500_sync_current_schema/migration.sql
+            --output /tmp/migration.sql
+          test -s /tmp/migration.sql
+          mkdir -p prisma/migrations/20260929212500_sync_current_schema
+          mv /tmp/migration.sql prisma/migrations/20260929212500_sync_current_schema/migration.sql
           cat prisma/migrations/20260929212500_sync_current_schema/migration.sql
       - name: Validate full migration chain
         run: |
