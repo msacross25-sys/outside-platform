@@ -23,22 +23,24 @@ export async function POST(request:Request){
   return NextResponse.json({error:"Check email, username, display name and password."},{status:400});
  }
 
+ let user;
  try{
-  const user=await db.user.create({
+  user=await db.user.create({
    data:{email,username,displayName,passwordHash:hashPassword(password),emailVerifiedAt:null},
    select:{id:true,email:true,username:true,displayName:true,createdAt:true}
   });
-  const {token}=await issueAuthToken(user.id,"EMAIL_VERIFY",24*60*60*1000);
-  let emailSent=true;
-  try{
-   await sendVerificationEmail(user.email,token);
-  }catch(error){
-   emailSent=false;
-   console.error("Verification email delivery failed",error);
-  }
-  await recordAuthEvent(request,"ACCOUNT_CREATED",user.id,{emailSent});
-  return NextResponse.json({user:{id:user.id,username:user.username,displayName:user.displayName,createdAt:user.createdAt},verificationRequired:true,emailSent},{status:201});
  }catch{
   return NextResponse.json({error:"Email or username is already in use."},{status:409});
  }
+
+ let emailSent=false;
+ try{
+  const {token}=await issueAuthToken(user.id,"EMAIL_VERIFY",24*60*60*1000);
+  await sendVerificationEmail(user.email,token);
+  emailSent=true;
+ }catch(error){
+  console.error("Verification setup or email delivery failed",error);
+ }
+ await recordAuthEvent(request,"ACCOUNT_CREATED",user.id,{emailSent});
+ return NextResponse.json({user:{id:user.id,username:user.username,displayName:user.displayName,createdAt:user.createdAt},verificationRequired:true,emailSent},{status:201});
 }
