@@ -233,6 +233,7 @@ model User {
   favoriteHosts FavoriteHost[] @relation("favoriteHostOwner")
   favoritedBy FavoriteHost[] @relation("favoriteHostTarget")
   favoritePorches FavoritePorch[]
+  monthlyHostRanks MonthlyHostRank[]
   staffProfile StaffProfile?
   moderationActions ModerationActionLog[] @relation("moderationActor")
   auditEvents AuditLog[] @relation("auditActor")
@@ -966,6 +967,7 @@ model BattleTeam {
 model MonthlyHostRank {
   id String @id @default(cuid())
   hostId String
+  host User @relation(fields:[hostId], references:[id], onDelete:Cascade)
   month String
   rank Int
   score Int
