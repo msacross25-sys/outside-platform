@@ -206,21 +206,8 @@ CREATE TABLE "LiveViewerPresence" (
     CONSTRAINT "LiveViewerPresence_pkey" PRIMARY KEY ("roomId","userId")
 );
 
--- CreateTable
-CREATE TABLE "ViewingSession" (
-    "id" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
-    "roomId" TEXT NOT NULL,
-    "startedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "lastHeartbeatAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "endedAt" TIMESTAMP(3),
-    "verifiedSeconds" INTEGER NOT NULL DEFAULT 0,
-    "eligible" BOOLEAN NOT NULL DEFAULT true,
-    "invalidReason" TEXT,
-    "activityVerifiedAt" TIMESTAMP(3),
-
-    CONSTRAINT "ViewingSession_pkey" PRIMARY KEY ("id")
-);
+-- AlterTable
+ALTER TABLE "ViewingSession" ADD COLUMN     "activityVerifiedAt" TIMESTAMP(3);
 
 -- CreateTable
 CREATE TABLE "HostCosmetic" (
@@ -426,13 +413,7 @@ CREATE INDEX "LiveSignal_targetUserId_createdAt_idx" ON "LiveSignal"("targetUser
 CREATE INDEX "LiveViewerPresence_roomId_active_lastSeenAt_idx" ON "LiveViewerPresence"("roomId", "active", "lastSeenAt");
 
 -- CreateIndex
-CREATE INDEX "ViewingSession_userId_startedAt_idx" ON "ViewingSession"("userId", "startedAt");
-
--- CreateIndex
 CREATE INDEX "ViewingSession_userId_endedAt_eligible_idx" ON "ViewingSession"("userId", "endedAt", "eligible");
-
--- CreateIndex
-CREATE INDEX "ViewingSession_roomId_startedAt_idx" ON "ViewingSession"("roomId", "startedAt");
 
 -- CreateIndex
 CREATE INDEX "CosmeticGift_hostId_createdAt_idx" ON "CosmeticGift"("hostId", "createdAt");
@@ -544,12 +525,6 @@ ALTER TABLE "LiveViewerPresence" ADD CONSTRAINT "LiveViewerPresence_roomId_fkey"
 
 -- AddForeignKey
 ALTER TABLE "LiveViewerPresence" ADD CONSTRAINT "LiveViewerPresence_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "ViewingSession" ADD CONSTRAINT "ViewingSession_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "ViewingSession" ADD CONSTRAINT "ViewingSession_roomId_fkey" FOREIGN KEY ("roomId") REFERENCES "PorchRoom"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "HostCosmetic" ADD CONSTRAINT "HostCosmetic_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
