@@ -43,5 +43,6 @@ jobs:
             --to-schema-datamodel prisma/schema.prisma \
             --shadow-database-url "$SHADOW_DATABASE_URL" \
             --exit-code
+      - run: npm run lint
       - run: npm run typecheck
       - run: npm run build
