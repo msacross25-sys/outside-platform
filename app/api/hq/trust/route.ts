@@ -1,4 +1,41 @@
-import {NextResponse} from "next/server";import {db} from "@/lib/db";import {currentUser} from "@/lib/session";
-async function reviewer(id:string){const s=await db.staffProfile.findUnique({where:{userId:id}});return !!s?.active&&["OWNER","CO_OWNER","EXECUTIVE_ADMIN","TRUST_SAFETY"].includes(s.role)}
-export async function GET(){const me=await currentUser();if(!me||!await reviewer(me.id))return NextResponse.json({error:"Trust & Safety permission required."},{status:403});const [reports,appeals,activeCases]=await Promise.all([db.report.findMany({where:{status:{in:["OPEN","REVIEWING"]}},orderBy:{createdAt:"asc"},take:100}),db.appeal.findMany({where:{status:"OPEN"},orderBy:{createdAt:"asc"},take:100,include:{user:{select:{username:true,displayName:true,status:true}}}}),db.trustCase.findMany({where:{status:{in:["OPEN","REVIEWING"]}},orderBy:{openedAt:"asc"},take:100,include:{target:{select:{username:true,displayName:true,status:true}}}})]);return NextResponse.json({reports,appeals,activeCases})}
-export async function PATCH(request:Request){const me=await currentUser();if(!me||!await reviewer(me.id))return NextResponse.json({error:"Trust & Safety permission required."},{status:403});const body=await request.json().catch(()=>null),id=String(body?.id??""),status=String(body?.status??""),resolution=String(body?.resolution??"").trim();if(!["UPHELD","OVERTURNED","PARTIAL"].includes(status)||resolution.length<5)return NextResponse.json({error:"Resolution and valid decision required."},{status:400});const original=await db.appeal.findUnique({where:{id}});if(!original)return NextResponse.json({error:"Appeal not found."},{status:404});const appeal=await db.$transaction(async tx=>{const a=await tx.appeal.update({where:{id},data:{status,reviewerId:me.id,resolution,reviewedAt:new Date()}});if(status==="OVERTURNED"&&original.moderationActionId){const action=await tx.moderationActionLog.findUnique({where:{id:original.moderationActionId}});if(action){await tx.trustCase.updateMany({where:{targetUserId:original.userId,status:{in:["OPEN","REVIEWING"]},permanentEnforcement:false},data:{status:"DISMISSED",resolvedAt:new Date()}});await tx.auditLog.create({data:{actorId:me.id,action:"ENFORCEMENT_RESTORED_AFTER_APPEAL",resourceType:"USER",resourceId:original.userId,reason:resolution}})}}await tx.auditLog.create({data:{actorId:me.id,action:"APPEAL_"+status,resourceType:"Appeal",resourceId:id,reason:resolution}});return a});return NextResponse.json({appeal})}
+import {NextResponse} from "next/server";
+import {db} from "@/lib/db";
+import {currentStaff} from "@/lib/hq";
+
+function reviewer(role:string){
+ return ["OWNER","CO_OWNER","EXECUTIVE_ADMIN","TRUST_SAFETY"].includes(role);
+}
+
+export async function GET(){
+ const access=await currentStaff();
+ if(!access||!reviewer(access.staff.role))return NextResponse.json({error:"Trust & Safety permission required."},{status:403});
+ const [reports,appeals,activeCases]=await Promise.all([
+  db.report.findMany({where:{status:{in:["OPEN","REVIEWING"]}},orderBy:{createdAt:"asc"},take:100}),
+  db.appeal.findMany({where:{status:"OPEN"},orderBy:{createdAt:"asc"},take:100,include:{user:{select:{username:true,displayName:true,status:true}}}}),
+  db.trustCase.findMany({where:{status:{in:["OPEN","REVIEWING"]}},orderBy:{openedAt:"asc"},take:100,include:{target:{select:{username:true,displayName:true,status:true}}}})
+ ]);
+ return NextResponse.json({reports,appeals,activeCases});
+}
+
+export async function PATCH(request:Request){
+ const access=await currentStaff();
+ if(!access||!reviewer(access.staff.role))return NextResponse.json({error:"Trust & Safety permission required."},{status:403});
+ const body=await request.json().catch(()=>null);
+ const id=String(body?.id??""),status=String(body?.status??""),resolution=String(body?.resolution??"").trim();
+ if(!["UPHELD","OVERTURNED","PARTIAL"].includes(status)||resolution.length<5)return NextResponse.json({error:"Resolution and valid decision required."},{status:400});
+ const original=await db.appeal.findUnique({where:{id}});
+ if(!original)return NextResponse.json({error:"Appeal not found."},{status:404});
+ const appeal=await db.$transaction(async tx=>{
+  const a=await tx.appeal.update({where:{id},data:{status,reviewerId:access.user.id,resolution,reviewedAt:new Date()}});
+  if(status==="OVERTURNED"&&original.moderationActionId){
+   const action=await tx.moderationActionLog.findUnique({where:{id:original.moderationActionId}});
+   if(action){
+    await tx.trustCase.updateMany({where:{targetUserId:original.userId,status:{in:["OPEN","REVIEWING"]},permanentEnforcement:false},data:{status:"DISMISSED",resolvedAt:new Date()}});
+    await tx.auditLog.create({data:{actorId:access.user.id,action:"ENFORCEMENT_RESTORED_AFTER_APPEAL",resourceType:"USER",resourceId:original.userId,reason:resolution}});
+   }
+  }
+  await tx.auditLog.create({data:{actorId:access.user.id,action:"APPEAL_"+status,resourceType:"Appeal",resourceId:id,reason:resolution}});
+  return a;
+ });
+ return NextResponse.json({appeal});
+}

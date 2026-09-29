@@ -1,8 +1,8 @@
-import {db} from "@/lib/db";
+import {ownerAccess} from "@/lib/ownerAccess";
 
 export async function financeStaff(userId:string){
- const staff=await db.staffProfile.findUnique({where:{userId}});
- return Boolean(staff?.active&&staff.role==="OWNER");
+ const access=await ownerAccess(userId);
+ return access.finance;
 }
 
 export function validGiftTransition(from:string,to:string){
