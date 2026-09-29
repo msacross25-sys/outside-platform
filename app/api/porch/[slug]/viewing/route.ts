@@ -9,10 +9,12 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
  const {slug}=await params,me=await currentUser();
  if(!me)return NextResponse.json({error:"Sign in required."},{status:401});
  const access=await getLiveMemberAccess(slug,me.id);
- if(!access||!access.room.startedAt)return NextResponse.json({error:"Live room unavailable."},{status:404});
+ if(!access)return NextResponse.json({error:"Live room unavailable."},{status:404});
  const room=access.room;
+ const startedAt=room.startedAt;
+ if(!startedAt)return NextResponse.json({error:"Live room unavailable."},{status:404});
  if(access.member?.role==="HOST")return NextResponse.json({error:"Watching your own live does not count."},{status:403});
- const liveMinutes=(Date.now()-room.startedAt.getTime())/60000;
+ const liveMinutes=(Date.now()-startedAt.getTime())/60000;
  if(liveMinutes<30)return NextResponse.json({error:"Verified viewing time starts after the room has been live for at least 30 minutes.",minutesRemaining:Math.ceil(30-liveMinutes)},{status:403});
  const b=await request.json().catch(()=>null),sessionId=String(b?.sessionId??""),active=b?.active===true;
  if(!sessionId){
