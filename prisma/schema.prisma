@@ -56,9 +56,22 @@ enum NotificationType {
   CREATOR_LEVEL
   BADGE_UNLOCKED
 }
-enum AccountPrivacy { PUBLIC PRIVATE }
-enum FollowRequestStatus { PENDING APPROVED DECLINED CANCELLED }
-enum ContactPrivacy { EVERYONE FOLLOWERS FRIENDS NOBODY }
+enum AccountPrivacy {
+  PUBLIC
+  PRIVATE
+}
+enum FollowRequestStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  CANCELLED
+}
+enum ContactPrivacy {
+  EVERYONE
+  FOLLOWERS
+  FRIENDS
+  NOBODY
+}
 enum CirclePrivacy {
   PUBLIC
   PRIVATE
