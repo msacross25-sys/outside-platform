@@ -224,6 +224,8 @@ model User {
   liveReactions LiveReaction[]
   liveReplays LiveReplay[]
   clips Clip[]
+  clipLikes ClipLike[]
+  clipComments ClipComment[]
   cosmetics HostCosmetic[]
   cosmeticGiftsSent CosmeticGift[] @relation("cosmeticGiftSender")
   cosmeticGiftsReceived CosmeticGift[] @relation("cosmeticGiftHost")
@@ -575,7 +577,30 @@ model Clip {
   room PorchRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
   replay LiveReplay? @relation(fields: [replayId], references: [id], onDelete: SetNull)
   @@index([creatorId, createdAt])
+  likes ClipLike[]
+  comments ClipComment[]
   @@index([roomId, createdAt])
+}
+
+model ClipLike {
+  clipId String
+  userId String
+  createdAt DateTime @default(now())
+  clip Clip @relation(fields: [clipId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([clipId, userId])
+  @@index([userId, createdAt])
+}
+
+model ClipComment {
+  id String @id @default(cuid())
+  clipId String
+  userId String
+  body String
+  createdAt DateTime @default(now())
+  clip Clip @relation(fields: [clipId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([clipId, createdAt])
 }
 
 model LiveSignal {
