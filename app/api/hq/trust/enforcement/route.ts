@@ -1,19 +1,18 @@
 import {NextResponse} from "next/server";
 import type {ModerationAction} from "@prisma/client";
 import {db} from "@/lib/db";
-import {currentUser} from "@/lib/session";
+import {currentStaff} from "@/lib/hq";
 import {isMainOwner,mainOwnerProtectedError} from "@/lib/mainOwnerProtection";
 
 const ENFORCEMENT_ACTIONS=["WARN","RESTRICT","SUSPEND","BAN"] as const;
 
-async function operator(id:string){
- const s=await db.staffProfile.findUnique({where:{userId:id}});
- return !!s?.active&&["OWNER","CO_OWNER","EXECUTIVE_ADMIN","TRUST_SAFETY"].includes(s.role);
+function operator(role:string){
+ return ["OWNER","CO_OWNER","EXECUTIVE_ADMIN","TRUST_SAFETY"].includes(role);
 }
 
 export async function POST(request:Request){
- const me=await currentUser();
- if(!me||!await operator(me.id))return NextResponse.json({error:"Enforcement permission required."},{status:403});
+ const access=await currentStaff();
+ if(!access||!operator(access.staff.role))return NextResponse.json({error:"Enforcement permission required."},{status:403});
  const b=await request.json().catch(()=>null);
  const targetUserId=String(b?.targetUserId??"");
  const actionRaw=String(b?.action??"");
@@ -23,9 +22,12 @@ export async function POST(request:Request){
  const action=actionRaw as ModerationAction;
  const status=action==="BAN"?"BANNED":action==="SUSPEND"?"SUSPENDED":undefined;
  const result=await db.$transaction(async tx=>{
-  if(status)await tx.user.update({where:{id:targetUserId},data:{status}});
-  const log=await tx.moderationActionLog.create({data:{actorId:me.id,targetUserId,action,reason}});
-  await tx.auditLog.create({data:{actorId:me.id,action:"ACCOUNT_"+action,resourceType:"USER",resourceId:targetUserId,reason}});
+  if(status){
+   await tx.user.update({where:{id:targetUserId},data:{status}});
+   await tx.session.deleteMany({where:{userId:targetUserId}});
+  }
+  const log=await tx.moderationActionLog.create({data:{actorId:access.user.id,targetUserId,action,reason}});
+  await tx.auditLog.create({data:{actorId:access.user.id,action:"ACCOUNT_"+action,resourceType:"USER",resourceId:targetUserId,reason}});
   return log;
  });
  return NextResponse.json({enforcement:result});
