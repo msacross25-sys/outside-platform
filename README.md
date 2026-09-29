@@ -21,7 +21,7 @@ This repository begins with the production web foundation. The architecture is i
 - `/receipts` — Receipts
 - `/messages` — messaging
 - `/studio` — Creator Studio
-- `/hq` — Owner HQ placeholder (must be protected before production)
+- `/hq` — Owner HQ
 
 ## Local development
 ```bash
@@ -31,5 +31,30 @@ npm run dev
 
 Open http://localhost:3000.
 
+## Database environments
+The Prisma schema uses both `DATABASE_URL` and `DIRECT_URL`.
+
+- `DATABASE_URL` is the application/runtime PostgreSQL connection. With Supabase this may be the pooler/runtime connection.
+- `DIRECT_URL` must be a direct PostgreSQL connection suitable for Prisma migrations. Do not use a transaction-pooler URL here.
+
+Never commit real database credentials.
+
+### Development migrations
+Use this only while developing schema changes locally:
+
+```bash
+npm run db:migrate
+```
+
+### Production migration deployment
+Production and hosted databases must use the checked-in migration history:
+
+```bash
+npm run db:deploy
+npm run db:status
+```
+
+Do not use `prisma migrate dev` against production or Supabase production databases.
+
 ## Important
-This is the production codebase foundation, not a claim that all platform systems are complete. Authentication, database persistence, media processing, realtime Live/Porch infrastructure, payments, moderation services, and mobile apps are staged work and must be implemented/tested before public launch.
+The repository contains the production web foundation and an expanding set of implemented platform systems. External infrastructure still needs environment-specific configuration and end-to-end validation before public launch, including production database credentials, media/realtime services, payment processing, moderation operations, and mobile distribution.
