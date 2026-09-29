@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - db/schema-sync-20260929
+    paths-ignore:
+      - prisma/migrations/20260929212500_sync_current_schema/**
+
+permissions:
+  contents: write
 
 jobs:
   diff:
@@ -28,11 +33,41 @@ jobs:
       SHADOW_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/outside_shadow
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: db/schema-sync-20260929
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c "CREATE DATABASE outside_shadow;"
-      - run: npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url "$SHADOW_DATABASE_URL" --script --output migration.sql
-      - run: cat migration.sql
+      - name: Generate migration
+        run: |
+          mkdir -p prisma/migrations/20260929212500_sync_current_schema
+          npx prisma migrate diff \
+            --from-migrations prisma/migrations \
+            --to-schema-datamodel prisma/schema.prisma \
+            --shadow-database-url "$SHADOW_DATABASE_URL" \
+            --script \
+            --output prisma/migrations/20260929212500_sync_current_schema/migration.sql
+          test -s prisma/migrations/20260929212500_sync_current_schema/migration.sql
+          cat prisma/migrations/20260929212500_sync_current_schema/migration.sql
+      - name: Validate full migration chain
+        run: |
+          npx prisma migrate deploy
+          npx prisma migrate status
+          npx prisma validate
+          npx prisma generate
+          npm run typecheck
+          npm run build
+      - name: Commit generated migration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add prisma/migrations/20260929212500_sync_current_schema/migration.sql
+          if git diff --cached --quiet; then
+            echo "No migration changes to commit."
+            exit 0
+          fi
+          git commit -m "Add schema sync migration"
+          git push origin HEAD:db/schema-sync-20260929
