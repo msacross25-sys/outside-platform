@@ -567,7 +567,6 @@ model LiveReplay {
   clips Clip[]
   @@index([hostId, createdAt])
   @@index([status, createdAt])
-  @@index([recipientId, status, createdAt])
 }
 
 model Clip {
