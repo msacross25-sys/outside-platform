@@ -27,6 +27,9 @@ jobs:
       SHADOW_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/outside_shadow
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
       SMOKE_BASE_URL: http://127.0.0.1:3000
+      AUTH_SECRET: ci-only-outsiide-auth-secret-not-for-production
+      MFA_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      EMAIL_DELIVERY_MODE: test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
