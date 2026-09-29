@@ -1,0 +1,2 @@
+import {NextResponse} from "next/server";import {currentUser} from "@/lib/session";import {financeStaff} from "@/lib/finance";import {monthKey,refreshMonthlyTopHosts} from "@/lib/monthlyHosts";
+export async function POST(){const me=await currentUser();if(!me||!await financeStaff(me.id))return NextResponse.json({error:"Owner access required."},{status:403});const month=monthKey(),top=await refreshMonthlyTopHosts(month);return NextResponse.json({month,top})}
