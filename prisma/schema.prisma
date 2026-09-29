@@ -571,6 +571,7 @@ model Clip {
   mediaUrl String?
   startSeconds Int
   endSeconds Int
+  featured Boolean @default(false)
   visibility ClipVisibility @default(PUBLIC)
   createdAt DateTime @default(now())
   creator User @relation(fields: [creatorId], references: [id], onDelete: Cascade)
