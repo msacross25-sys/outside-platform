@@ -25,6 +25,8 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/outside
       DIRECT_URL: postgresql://postgres:postgres@localhost:5432/outside
       SHADOW_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/outside_shadow
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+      SMOKE_BASE_URL: http://127.0.0.1:3000
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -46,3 +48,22 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run build
+      - name: Start production server
+        run: |
+          npm run start -- -H 127.0.0.1 -p 3000 > /tmp/outside-next.log 2>&1 &
+          echo $! > /tmp/outside-next.pid
+      - name: Wait for OUTSiiDE
+        run: |
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:3000/api/health >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/outside-next.log
+          exit 1
+      - name: Runtime smoke test
+        run: npm run smoke
+      - name: Show server log on failure
+        if: failure()
+        run: cat /tmp/outside-next.log || true
