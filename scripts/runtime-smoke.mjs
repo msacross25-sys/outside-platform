@@ -1,9 +1,12 @@
+import {createHash,createHmac} from "node:crypto";
 import {PrismaClient} from "@prisma/client";
 
 const db=new PrismaClient();
 const base=process.env.SMOKE_BASE_URL??"http://127.0.0.1:3000";
 const suffix=Date.now().toString(36).slice(-7);
 const password="RuntimeSmoke123!";
+const resetPassword="RuntimeSmoke456!";
+const BASE32="ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
 function fail(message,detail){
  console.error("\nSMOKE FAILURE:",message);
@@ -32,21 +35,63 @@ function sessionCookie(setCookie){
  return setCookie.split(";")[0];
 }
 
+function sha256(value){
+ return createHash("sha256").update(value).digest("hex");
+}
+
+function base32Decode(input){
+ const clean=input.toUpperCase().replace(/=+$/,"").replace(/[^A-Z2-7]/g,"");
+ let bits=0,value=0;
+ const out=[];
+ for(const char of clean){
+  const index=BASE32.indexOf(char);
+  if(index<0)continue;
+  value=(value<<5)|index;
+  bits+=5;
+  if(bits>=8){
+   out.push((value>>>(bits-8))&255);
+   bits-=8;
+  }
+ }
+ return Buffer.from(out);
+}
+
+function totp(secret){
+ const counter=Math.floor(Date.now()/30000);
+ const buffer=Buffer.alloc(8);
+ buffer.writeBigUInt64BE(BigInt(counter));
+ const digest=createHmac("sha1",base32Decode(secret)).update(buffer).digest();
+ const offset=digest[digest.length-1]&15;
+ const binary=((digest[offset]&0x7f)<<24)|(digest[offset+1]<<16)|(digest[offset+2]<<8)|digest[offset+3];
+ return String(binary%1_000_000).padStart(6,"0");
+}
+
 async function signup(username,displayName){
  const email=username+"@smoke.test";
  const r=await request("/api/users",{method:"POST",body:{email,username,displayName,password}});
  expect(r.response.status===201,"Signup failed",{status:r.response.status,data:r.data});
+ expect(r.data?.verificationRequired===true,"Signup did not require verification",r.data);
  return {id:r.data.user.id,username,email,displayName};
 }
 
-async function login(username){
- const r=await request("/api/auth/login",{method:"POST",body:{login:username,password}});
+async function verifyEmail(user){
+ const raw="verify-"+suffix+"-"+user.username;
+ await db.authToken.deleteMany({where:{userId:user.id,type:"EMAIL_VERIFY"}});
+ await db.authToken.create({
+  data:{userId:user.id,type:"EMAIL_VERIFY",tokenHash:sha256(raw),expiresAt:new Date(Date.now()+60*60*1000)}
+ });
+ const r=await request("/api/auth/verify-email",{method:"POST",body:{token:raw}});
+ expect(r.response.status===200&&r.data?.verified===true,"Email verification failed",{user:user.username,status:r.response.status,data:r.data});
+}
+
+async function login(username,pw=password){
+ const r=await request("/api/auth/login",{method:"POST",body:{login:username,password:pw}});
  expect(r.response.status===200,"Login failed",{username,status:r.response.status,data:r.data});
- return sessionCookie(r.setCookie);
+ return {cookie:sessionCookie(r.setCookie),data:r.data};
 }
 
 async function main(){
- console.log("1. health");
+ console.log("1. health and account verification");
  const health=await request("/api/health");
  expect(health.response.status===200&&health.data?.ok===true,"Health endpoint failed",health);
 
@@ -54,6 +99,15 @@ async function main(){
  const bob=await signup("smokeb"+suffix,"Smoke Bob");
  const charlie=await signup("smokec"+suffix,"Smoke Charlie");
  const host=await signup("smokeh"+suffix,"Smoke Host");
+ const resetUser=await signup("smoker"+suffix,"Smoke Reset");
+
+ const unverified=await request("/api/auth/login",{method:"POST",body:{login:alice.username,password}});
+ expect(unverified.response.status===403&&unverified.data?.code==="EMAIL_VERIFICATION_REQUIRED","Unverified account was allowed to sign in",unverified.data);
+
+ const resend=await request("/api/auth/verify-email/request",{method:"POST",body:{login:alice.username}});
+ expect(resend.response.status===200,"Verification resend endpoint failed",resend.data);
+
+ await Promise.all([verifyEmail(alice),verifyEmail(bob),verifyEmail(charlie),verifyEmail(host),verifyEmail(resetUser)]);
 
  const dup=await request("/api/users",{method:"POST",body:{email:alice.email,username:alice.username,displayName:"Duplicate",password}});
  expect(dup.response.status===409,"Duplicate signup should be rejected",dup.data);
@@ -61,11 +115,70 @@ async function main(){
  const badLogin=await request("/api/auth/login",{method:"POST",body:{login:alice.username,password:"wrong-password"}});
  expect(badLogin.response.status===401,"Bad password should be rejected",badLogin.data);
 
- const [aliceCookie,bobCookie,charlieCookie,hostCookie]=await Promise.all([
-  login(alice.username),login(bob.username),login(charlie.username),login(host.username)
+ let [{cookie:aliceCookie},{cookie:bobCookie},{cookie:charlieCookie},{cookie:hostCookie},{cookie:resetCookie}]=await Promise.all([
+  login(alice.username),login(bob.username),login(charlie.username),login(host.username),login(resetUser.username)
  ]);
 
- console.log("2. session and profile privacy");
+ console.log("2. password reset and session invalidation");
+ const rawReset="reset-"+suffix+"-"+resetUser.username;
+ await db.authToken.deleteMany({where:{userId:resetUser.id,type:"PASSWORD_RESET"}});
+ await db.authToken.create({
+  data:{userId:resetUser.id,type:"PASSWORD_RESET",tokenHash:sha256(rawReset),expiresAt:new Date(Date.now()+30*60*1000)}
+ });
+ const reset=await request("/api/auth/password-reset/confirm",{method:"POST",body:{token:rawReset,password:resetPassword}});
+ expect(reset.response.status===200&&reset.data?.reset===true,"Password reset failed",reset.data);
+ const oldSession=await request("/api/auth/me",{cookie:resetCookie});
+ expect(oldSession.response.status===200&&!oldSession.data?.user,"Password reset did not revoke old sessions",oldSession.data);
+ const oldPassword=await request("/api/auth/login",{method:"POST",body:{login:resetUser.username,password}});
+ expect(oldPassword.response.status===401,"Old password still worked after reset",oldPassword.data);
+ const newPasswordLogin=await login(resetUser.username,resetPassword);
+ resetCookie=newPasswordLogin.cookie;
+
+ console.log("3. brute-force throttling");
+ const rateLogin="missing-rate-"+suffix;
+ for(let i=0;i<8;i++){
+  const r=await request("/api/auth/login",{method:"POST",body:{login:rateLogin,password:"bad-password"}});
+  expect(r.response.status===401,"Unexpected response before login throttle",{attempt:i+1,status:r.response.status,data:r.data});
+ }
+ const throttled=await request("/api/auth/login",{method:"POST",body:{login:rateLogin,password:"bad-password"}});
+ expect(throttled.response.status===429,"Login throttle did not activate",throttled.data);
+
+ console.log("4. session management");
+ const secondAlice=await login(alice.username);
+ const sessionList=await request("/api/security/sessions",{cookie:aliceCookie});
+ expect(sessionList.response.status===200&&sessionList.data?.sessions?.length>=2,"Multiple sessions were not listed",sessionList.data);
+ const revokeOthers=await request("/api/security/sessions",{method:"POST",cookie:aliceCookie,body:{action:"REVOKE_OTHERS"}});
+ expect(revokeOthers.response.status===200&&revokeOthers.data?.revoked>=1,"Other sessions were not revoked",revokeOthers.data);
+ const revokedCheck=await request("/api/auth/me",{cookie:secondAlice.cookie});
+ expect(revokedCheck.response.status===200&&!revokedCheck.data?.user,"Revoked session still authenticated",revokedCheck.data);
+ const securityEvents=await request("/api/security/events",{cookie:aliceCookie});
+ expect(securityEvents.response.status===200&&securityEvents.data?.events?.some(x=>x.kind==="OTHER_SESSIONS_REVOKED"),"Security event history missed session revocation",securityEvents.data);
+
+ console.log("5. staff MFA and HQ enforcement");
+ await db.staffProfile.create({data:{userId:host.id,role:"OWNER",mfaRequired:true}});
+ const hqBefore=await request("/api/hq/overview",{cookie:hostCookie});
+ expect(hqBefore.response.status===403,"HQ was accessible before required MFA setup",hqBefore.data);
+
+ const setup=await request("/api/security/mfa/setup",{method:"POST",cookie:hostCookie});
+ expect(setup.response.status===200&&setup.data?.secret,"MFA setup failed",setup.data);
+ const firstCode=totp(setup.data.secret);
+ const enabled=await request("/api/security/mfa/enable",{method:"POST",cookie:hostCookie,body:{code:firstCode}});
+ expect(enabled.response.status===200&&enabled.data?.enabled===true&&enabled.data?.recoveryCodes?.length===10,"MFA enrollment failed",enabled.data);
+
+ const hqAfter=await request("/api/hq/overview",{cookie:hostCookie});
+ expect(hqAfter.response.status===200,"HQ remained blocked after MFA enrollment",hqAfter.data);
+
+ const secondHost=await login(host.username);
+ expect(secondHost.data?.mfaRequired===true,"MFA-enabled login did not request a second factor",secondHost.data);
+ const hqUnverified=await request("/api/hq/overview",{cookie:secondHost.cookie});
+ expect(hqUnverified.response.status===403,"New staff session accessed HQ before MFA challenge",hqUnverified.data);
+ const challenge=await request("/api/auth/mfa/verify",{method:"POST",cookie:secondHost.cookie,body:{code:totp(setup.data.secret)}});
+ expect(challenge.response.status===200&&challenge.data?.verified===true,"MFA login challenge failed",challenge.data);
+ const hqVerified=await request("/api/hq/overview",{cookie:secondHost.cookie});
+ expect(hqVerified.response.status===200,"MFA-verified staff session could not access HQ",hqVerified.data);
+ hostCookie=secondHost.cookie;
+
+ console.log("6. profile privacy");
  const me=await request("/api/auth/me",{cookie:aliceCookie});
  expect(me.response.status===200&&me.data?.user?.id===alice.id,"Session lookup failed",me.data);
 
@@ -86,7 +199,7 @@ async function main(){
  });
  expect(privateProfile.response.status===200&&privateProfile.data?.user?.privacy==="PRIVATE","Private profile update failed",privateProfile.data);
 
- console.log("3. private follow request and approval");
+ console.log("7. private follow request and approval");
  const followRequest=await request("/api/follows/"+bob.username,{method:"POST",cookie:aliceCookie});
  expect(followRequest.response.status===202&&followRequest.data?.requested===true,"Private follow should create a request",followRequest.data);
 
@@ -97,7 +210,7 @@ async function main(){
  const approve=await request("/api/follow-requests",{method:"PATCH",cookie:bobCookie,body:{id:pending.id,decision:"APPROVE"}});
  expect(approve.response.status===200&&approve.data?.approved===true,"Follow approval failed",approve.data);
 
- console.log("4. post visibility, comments, likes and saves");
+ console.log("8. post visibility, comments, likes and saves");
  const followersPost=await db.post.create({data:{authorId:bob.id,caption:"Followers only smoke post",visibility:"FOLLOWERS"}});
 
  for(const [path,method,body] of [
@@ -116,7 +229,7 @@ async function main(){
  const comment=await request(`/api/posts/${followersPost.id}/comments`,{method:"POST",cookie:aliceCookie,body:{body:"Follower comment"}});
  expect(comment.response.status===201,"Follower comment failed",comment.data);
 
- console.log("5. direct messaging and block enforcement");
+ console.log("9. direct messaging and block enforcement");
  const conversation=await request("/api/messages/conversations",{method:"POST",cookie:aliceCookie,body:{username:bob.username}});
  expect([200,201].includes(conversation.response.status)&&conversation.data?.conversationId,"Conversation creation failed",conversation.data);
  const conversationId=conversation.data.conversationId;
@@ -126,7 +239,7 @@ async function main(){
  const read=await request("/api/messages/"+conversationId,{cookie:bobCookie});
  expect(read.response.status===200&&read.data?.messages?.some(x=>x.body==="Smoke message"),"Message read failed",read.data);
 
- console.log("6. age-gated gifts and block-safe gifting");
+ console.log("10. age-gated gifts and block-safe gifting");
  await db.user.update({where:{id:alice.id},data:{dateOfBirth:new Date("1990-01-01T00:00:00.000Z")}});
  await db.coinWallet.create({data:{userId:alice.id,balanceCoins:500n}});
  const gift=await request("/api/profile-gifts/"+bob.username,{method:"POST",cookie:aliceCookie,body:{giftKey:"star"}});
@@ -151,13 +264,14 @@ async function main(){
  expect(notificationList.response.status===200,"Notification list failed",notificationList.data);
  expect(!notificationList.data?.notifications?.some(x=>x.actor?.username===alice.username),"Blocked actor remained in notification list",notificationList.data);
 
- console.log("7. host eligibility, Live lifecycle and room bans");
+ console.log("11. host eligibility, Live lifecycle and room bans");
  const followerUsers=Array.from({length:2500},(_,i)=>({
   id:`smoke-follower-${suffix}-${i}`,
   email:`smoke-follower-${suffix}-${i}@example.test`,
   username:(`sf${suffix}${i}`).slice(0,30),
   displayName:"Smoke Follower "+i,
-  passwordHash:"unused"
+  passwordHash:"unused",
+  emailVerifiedAt:new Date()
  }));
  await db.user.createMany({data:followerUsers});
  await db.follow.createMany({data:followerUsers.map(u=>({followerId:u.id,followingId:host.id}))});
