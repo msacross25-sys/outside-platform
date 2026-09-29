@@ -7,13 +7,13 @@ import {recordAuthEvent} from "@/lib/authEvents";
 
 export async function POST(request:Request){
  const body=await request.json().catch(()=>null);
- const email=String(body?.email??"").trim().toLowerCase();
- if(!email)return NextResponse.json({ok:true});
+ const login=String(body?.login??body?.email??"").trim().toLowerCase();
+ if(!login)return NextResponse.json({ok:true});
 
- const limit=await checkAuthRateLimit({action:"VERIFY_EMAIL_REQUEST",identifier:email,request,limit:3,windowMs:15*60*1000,blockMs:30*60*1000});
+ const limit=await checkAuthRateLimit({action:"VERIFY_EMAIL_REQUEST",identifier:login,request,limit:3,windowMs:15*60*1000,blockMs:30*60*1000});
  if(!limit.allowed)return NextResponse.json({ok:true},{headers:{"Retry-After":String(limit.retryAfterSeconds)}});
 
- const user=await db.user.findUnique({where:{email},select:{id:true,email:true,emailVerifiedAt:true,status:true}});
+ const user=await db.user.findFirst({where:{OR:[{email:login},{username:login}]},select:{id:true,email:true,emailVerifiedAt:true,status:true}});
  if(!user||user.status!=="ACTIVE"||user.emailVerifiedAt)return NextResponse.json({ok:true});
 
  const {token}=await issueAuthToken(user.id,"EMAIL_VERIFY",24*60*60*1000);
