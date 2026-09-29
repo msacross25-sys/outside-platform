@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import {isAtLeast18} from "@/lib/age";import { db } from "@/lib/db";
 import { currentUser } from "@/lib/session";
 import { effectByKey } from "@/lib/liveEffects";
 
