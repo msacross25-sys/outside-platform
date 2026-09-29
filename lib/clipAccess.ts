@@ -1,0 +1,2 @@
+import {db} from "@/lib/db";
+export async function canViewClip(clip:{creatorId:string;visibility:string},viewerId?:string|null){if(clip.visibility==="PUBLIC"||viewerId===clip.creatorId)return true;if(!viewerId)return false;if(clip.visibility==="FOLLOWERS")return !!await db.follow.findUnique({where:{followerId_followingId:{followerId:viewerId,followingId:clip.creatorId}}});return false}
