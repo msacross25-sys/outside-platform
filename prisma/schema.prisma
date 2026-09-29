@@ -299,6 +299,7 @@ model Report {
   updatedAt DateTime @updatedAt
   reporter User @relation("reportsFiled", fields: [reporterId], references: [id], onDelete: Cascade)
   @@index([status, createdAt])
+  @@index([reporterId])
   @@index([reportedUserId])
   @@index([postId])
 }
@@ -366,6 +367,7 @@ model Comment {
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
   author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
   @@index([postId, createdAt])
+  @@index([authorId])
 }
 
 model Reaction {
@@ -386,6 +388,7 @@ model Save {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
   @@id([userId, postId])
+  @@index([postId])
 }
 
 model Story {
@@ -413,6 +416,7 @@ model Notification {
   actor User @relation("notificationActor", fields: [actorId], references: [id], onDelete: Cascade)
   @@index([recipientId, createdAt])
   @@index([recipientId, readAt])
+  @@index([actorId])
 }
 
 
@@ -445,6 +449,7 @@ model Message {
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender User @relation("messageSender", fields: [senderId], references: [id], onDelete: Cascade)
   @@index([conversationId, createdAt])
+  @@index([senderId])
 }
 
 
@@ -541,6 +546,7 @@ model LiveMessage {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([roomId, createdAt])
   @@index([roomId, pinned])
+  @@index([userId])
 }
 
 model LiveReaction {
@@ -598,6 +604,7 @@ model Clip {
   room PorchRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
   replay LiveReplay? @relation(fields: [replayId], references: [id], onDelete: SetNull)
   @@index([creatorId, createdAt])
+  @@index([replayId])
   likes ClipLike[]
   comments ClipComment[]
   @@index([roomId, createdAt])
@@ -622,6 +629,7 @@ model ClipComment {
   clip Clip @relation(fields: [clipId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([clipId, createdAt])
+  @@index([userId])
 }
 
 model LiveSignal {
@@ -637,6 +645,7 @@ model LiveSignal {
   target User? @relation("signalTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
   @@index([roomId, createdAt])
   @@index([targetUserId, createdAt])
+  @@index([senderId])
 }
 
 model PorchStageRequest {
@@ -650,6 +659,7 @@ model PorchStageRequest {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@unique([roomId, userId])
   @@index([roomId, status, requestedAt])
+  @@index([userId])
 }
 
 model PorchRoomRestriction {
@@ -693,6 +703,7 @@ model LiveViewerPresence {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@id([roomId, userId])
   @@index([roomId, active, lastSeenAt])
+  @@index([userId])
 }
 
 model ViewingSession {
@@ -761,6 +772,7 @@ model GiftTransaction {
   room PorchRoom? @relation(fields: [roomId], references: [id], onDelete: SetNull)
   @@index([senderId, createdAt])
   @@index([recipientId, createdAt])
+  @@index([roomId])
   @@index([status, createdAt])
 }
 
@@ -783,6 +795,7 @@ model CosmeticGift {
   sender User @relation("cosmeticGiftSender", fields: [senderId], references: [id], onDelete: Restrict)
   host User @relation("cosmeticGiftHost", fields: [hostId], references: [id], onDelete: Restrict)
   @@index([hostId, createdAt])
+  @@index([senderId])
 }
 
 model CreatorPayout {
@@ -866,6 +879,7 @@ model ModerationActionLog {
   caseRef String?
   createdAt DateTime @default(now())
   actor User @relation("moderationActor", fields: [actorId], references: [id], onDelete: Restrict)
+  @@index([actorId])
   @@index([targetUserId, createdAt])
   @@index([targetPostId, createdAt])
 }
@@ -941,6 +955,7 @@ model FavoriteHost {
   host User @relation("favoriteHostTarget", fields:[hostId], references:[id], onDelete:Cascade)
   @@id([userId,hostId])
   @@index([userId,position])
+  @@index([hostId])
 }
 
 model FavoritePorch {
@@ -952,6 +967,7 @@ model FavoritePorch {
   room PorchRoom @relation(fields:[roomId], references:[id], onDelete:Cascade)
   @@id([userId,roomId])
   @@index([userId,position])
+  @@index([roomId])
 }
 
 model Battle {
