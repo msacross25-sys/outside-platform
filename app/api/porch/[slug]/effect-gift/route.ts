@@ -21,12 +21,12 @@ export async function POST(request: Request, {params}:{params:Promise<{slug:stri
       const wallet=await tx.coinWallet.findUnique({where:{userId:me.id}});
       if(!wallet || wallet.balanceCoins<cost) throw new Error("LOW_BALANCE");
       await tx.coinWallet.update({where:{userId:me.id},data:{balanceCoins:{decrement:cost}}});
-      await tx.cosmeticGift.create({data:{senderId:me.id,hostId:host.userId,effectKey:effect.key,coinCost:cost}});
+      const existing=await tx.hostCosmetic.findUnique({where:{userId_effectKey:{userId:host.userId,effectKey:effect.key}}});if(existing)throw new Error("ALREADY_OWNED");await tx.cosmeticGift.create({data:{senderId:me.id,hostId:host.userId,effectKey:effect.key,coinCost:cost}});
       await tx.hostCosmetic.upsert({where:{userId_effectKey:{userId:host.userId,effectKey:effect.key}},create:{userId:host.userId,effectKey:effect.key,source:"GIFT"},update:{}});
     });
     return NextResponse.json({gifted:true,effectKey:effect.key,hostControlsActivation:true});
   } catch(error) {
-    const message=error instanceof Error&&error.message==="LOW_BALANCE"?"Not enough coins.":"Unable to gift effect.";
+    const message=error instanceof Error&&error.message==="LOW_BALANCE"?"Not enough coins.":error instanceof Error&&error.message==="ALREADY_OWNED"?"The host already owns this effect.":"Unable to gift effect.";
     return NextResponse.json({error:message},{status:409});
   }
 }
