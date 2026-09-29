@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { currentStaff,canManageHosts } from "@/lib/hq";
 import { accountStanding } from "@/lib/accountStanding";
+import { ownerAccess } from "@/lib/ownerAccess";
 
 export async function GET(){
  const access=await currentStaff();
@@ -15,6 +16,7 @@ export async function GET(){
 export async function POST(request:Request){
  const access=await currentStaff();
  if(!access||!canManageHosts(access.staff.role))return NextResponse.json({error:"Host management access required."},{status:403});
+ const owner=await ownerAccess(access.user.id);if(!owner.platform)return NextResponse.json({error:"Owner or Co-Owner final approval is required."},{status:403});
  const body=await request.json().catch(()=>null);
  const id=String(body?.id??"");
  const action=String(body?.action??"");
