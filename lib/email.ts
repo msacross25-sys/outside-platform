@@ -1,3 +1,5 @@
+import {createHash} from "node:crypto";
+
 function appUrl(){
  return (process.env.NEXT_PUBLIC_APP_URL||"http://localhost:3000").replace(/\/$/,"");
 }
@@ -35,7 +37,7 @@ export async function sendVerificationEmail(email:string,token:string){
   email,
   "Verify your OUTSiiDE email",
   '<div style="font-family:Arial,sans-serif"><h1>Verify your email</h1><p>Confirm this email address to finish setting up your OUTSiiDE account.</p><p><a href="'+url+'">Verify email</a></p><p>This link expires in 24 hours.</p></div>',
-  "verify-email/"+token.slice(0,20)
+  "verify-email/"+createHash("sha256").update(token).digest("hex")
  );
 }
 
@@ -45,6 +47,6 @@ export async function sendPasswordResetEmail(email:string,token:string){
   email,
   "Reset your OUTSiiDE password",
   '<div style="font-family:Arial,sans-serif"><h1>Reset your password</h1><p>Use the secure link below to choose a new OUTSiiDE password.</p><p><a href="'+url+'">Reset password</a></p><p>This link expires in 30 minutes. If you did not request it, you can ignore this email.</p></div>',
-  "password-reset/"+token.slice(0,20)
+  "password-reset/"+createHash("sha256").update(token).digest("hex")
  );
 }
