@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import {isAtLeast18} from "@/lib/age";import { db } from "@/lib/db";
 import { currentUser } from "@/lib/session";
 import { giftByKey,splitGift } from "@/lib/gifts";
 import { verifiedHours } from "@/lib/progression";
 
 export async function POST(request:Request,{params}:{params:Promise<{slug:string}>}){
- const {slug}=await params;const me=await currentUser();if(!me)return NextResponse.json({error:"Sign in required."},{status:401});
+ const {slug}=await params;const me=await currentUser();if(!me)return NextResponse.json({error:"Sign in required."},{status:401});const buyer=await db.user.findUnique({where:{id:me.id},select:{dateOfBirth:true}});if(!isAtLeast18(buyer?.dateOfBirth))return NextResponse.json({error:"Purchasing or sending gifts requires an account age of 18 or older."},{status:403});
  const body=await request.json().catch(()=>null);const gift=giftByKey(String(body?.giftKey??""));
  if(!gift)return NextResponse.json({error:"Gift not found."},{status:404});
  if(gift.premium&&body?.confirmed!==true)return NextResponse.json({error:"This premium gift requires confirmation.",requiresConfirmation:true},{status:409});
