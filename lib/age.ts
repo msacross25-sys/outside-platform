@@ -1,0 +1,1 @@
+export function isAtLeast18(dateOfBirth:Date|null|undefined,now=new Date()){if(!dateOfBirth)return false;let age=now.getUTCFullYear()-dateOfBirth.getUTCFullYear();const beforeBirthday=now.getUTCMonth()<dateOfBirth.getUTCMonth()||(now.getUTCMonth()===dateOfBirth.getUTCMonth()&&now.getUTCDate()<dateOfBirth.getUTCDate());if(beforeBirthday)age--;return age>=18}
