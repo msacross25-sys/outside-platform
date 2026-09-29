@@ -567,6 +567,7 @@ model LiveReplay {
   clips Clip[]
   @@index([hostId, createdAt])
   @@index([status, createdAt])
+  @@index([recipientId, status, createdAt])
 }
 
 model Clip {
@@ -696,6 +697,7 @@ model ViewingSession {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   room PorchRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
   @@index([userId, startedAt])
+  @@index([userId, endedAt, eligible])
   @@index([roomId, startedAt])
 }
 
