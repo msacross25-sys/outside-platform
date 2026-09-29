@@ -4,9 +4,9 @@ import { BrandMark } from "@/components/BrandMark";
 import { currentUser } from "@/lib/session";
 
 const nav = [
-  ["Home", "/"], ["Discover", "/discover"], ["Live", "/live"],
+  ["Home", "/"], ["Following", "/following"], ["Discover", "/discover"], ["Live", "/live"],
   ["The Porch", "/porch"], ["Circles", "/circles"], ["Receipts", "/receipts"],
-  ["Messages", "/messages"], ["Notifications", "/notifications"], ["Wallet", "/wallet"], ["Creator Studio", "/studio"], ["Host Center", "/host/apply"]
+  ["Messages", "/messages"], ["Notifications", "/notifications"], ["Gifts", "/gifts"], ["Wallet", "/wallet"], ["Creator Center", "/creator"], ["Host Center", "/host"]
 ];
 
 export async function Shell({ children }: { children: ReactNode }) {
