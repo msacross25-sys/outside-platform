@@ -174,6 +174,7 @@ model User {
   bio String?
   avatarUrl String?
   profileVideoUrl String?
+  dateOfBirth DateTime?
   verified Boolean @default(false)
   privacy AccountPrivacy @default(PUBLIC)
   messagePrivacy ContactPrivacy @default(EVERYONE)
@@ -229,6 +230,9 @@ model User {
   cosmetics HostCosmetic[]
   cosmeticGiftsSent CosmeticGift[] @relation("cosmeticGiftSender")
   cosmeticGiftsReceived CosmeticGift[] @relation("cosmeticGiftHost")
+  favoriteHosts FavoriteHost[] @relation("favoriteHostOwner")
+  favoritedBy FavoriteHost[] @relation("favoriteHostTarget")
+  favoritePorches FavoritePorch[]
   staffProfile StaffProfile?
   moderationActions ModerationActionLog[] @relation("moderationActor")
   auditEvents AuditLog[] @relation("auditActor")
@@ -495,6 +499,8 @@ model PorchRoom {
   liveReactions LiveReaction[]
   replay LiveReplay?
   clips Clip[]
+  favoritedBy FavoritePorch[]
+  battles Battle[]
   @@index([status, scheduledFor])
 }
 
@@ -908,4 +914,63 @@ model AuditLog {
   actor User @relation("auditActor", fields: [actorId], references: [id], onDelete: Restrict)
   @@index([actorId, createdAt])
   @@index([resourceType, resourceId])
+}
+
+
+model FavoriteHost {
+  userId String
+  hostId String
+  position Int @default(0)
+  createdAt DateTime @default(now())
+  user User @relation("favoriteHostOwner", fields:[userId], references:[id], onDelete:Cascade)
+  host User @relation("favoriteHostTarget", fields:[hostId], references:[id], onDelete:Cascade)
+  @@id([userId,hostId])
+  @@index([userId,position])
+}
+
+model FavoritePorch {
+  userId String
+  roomId String
+  position Int @default(0)
+  createdAt DateTime @default(now())
+  user User @relation(fields:[userId], references:[id], onDelete:Cascade)
+  room PorchRoom @relation(fields:[roomId], references:[id], onDelete:Cascade)
+  @@id([userId,roomId])
+  @@index([userId,position])
+}
+
+model Battle {
+  id String @id @default(cuid())
+  roomId String
+  theme String
+  durationMinutes Int
+  status String @default("SCHEDULED")
+  startedAt DateTime?
+  endedAt DateTime?
+  createdAt DateTime @default(now())
+  room PorchRoom @relation(fields:[roomId], references:[id], onDelete:Cascade)
+  teams BattleTeam[]
+  @@index([roomId,status])
+}
+
+model BattleTeam {
+  id String @id @default(cuid())
+  battleId String
+  side Int
+  memberIds String[]
+  score Int @default(0)
+  battle Battle @relation(fields:[battleId], references:[id], onDelete:Cascade)
+  @@unique([battleId,side])
+}
+
+model MonthlyHostRank {
+  id String @id @default(cuid())
+  hostId String
+  month String
+  rank Int
+  score Int
+  badgeKey String @default("TOP_20_HOST")
+  createdAt DateTime @default(now())
+  @@unique([hostId,month])
+  @@index([month,rank])
 }
