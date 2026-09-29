@@ -2,7 +2,7 @@ import {LiveChat} from "@/components/LiveChat";
 import {GiftTray} from "@/components/GiftTray";
 import {LiveRoomMedia} from "@/components/LiveRoomMedia";
 import {VerifiedViewingTracker} from "@/components/VerifiedViewingTracker";
-import {FavoriteButton} from "@/components/FavoriteButton";
+import {FavoriteButton} from "@/components/FavoriteButton";import {PorchStageManager} from "@/components/PorchStageManager";
 import {PorchStageManager} from "@/components/PorchStageManager";
 
 type ViewerRole="HOST"|"COHOST"|"MODERATOR"|"SPEAKER"|"LISTENER"|null;
@@ -12,7 +12,7 @@ export function ViewerLiveScreen({room,meId,myRole,hostId}:{room:any;meId:string
   <div className="liveViewerActions"><FavoriteButton type="porch" id={room.id}/>{hostId&&<FavoriteButton type="host" id={hostId}/>}</div>
   <LiveRoomMedia slug={room.slug} roomType={room.roomType} status={room.status} meId={meId} initialMembers={room.members} myRole={myRole}/>
   <PorchStageManager slug={room.slug} members={room.members} role={myRole} stageSize={room.stageSize}/>
-  <VerifiedViewingTracker slug={room.slug} status={room.status} host={false}/>
+  <VerifiedViewingTracker slug={room.slug} status={room.status} host={false}/><PorchStageManager slug={room.slug} members={room.members} role={myRole} stageSize={room.stageSize}/>
   {room.status==="LIVE"&&myRole&&<LiveChat slug={room.slug} role={myRole}/>}
   <GiftTray slug={room.slug} canGift={!!myRole&&room.status==="LIVE"}/>
  </section>
