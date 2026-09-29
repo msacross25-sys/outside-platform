@@ -1,4 +1,5 @@
 import {createCipheriv,createDecipheriv,createHash,createHmac,randomBytes} from "node:crypto";
+import {db} from "@/lib/db";
 
 const BASE32="ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
@@ -93,4 +94,24 @@ export function generateRecoveryCodes(){
 
 export function hashRecoveryCode(code:string){
  return createHash("sha256").update(code.trim().toUpperCase()).digest("hex");
+}
+
+
+export async function verifyMfaCodeForUser(userId:string,code:string){
+ const credential=await db.mfaCredential.findUnique({where:{userId}});
+ if(!credential?.enabledAt||!credential.secretEncrypted)return {ok:false,recoveryUsed:false};
+
+ const normalized=code.trim().toUpperCase();
+ if(/^\d{6}$/.test(normalized)){
+  const secret=decryptMfaSecret(credential.secretEncrypted);
+  return {ok:verifyTotp(secret,normalized),recoveryUsed:false};
+ }
+
+ const hash=hashRecoveryCode(normalized);
+ const stored:string[]=JSON.parse(credential.recoveryCodesJson||"[]");
+ const index=stored.indexOf(hash);
+ if(index<0)return {ok:false,recoveryUsed:false};
+ stored.splice(index,1);
+ await db.mfaCredential.update({where:{userId},data:{recoveryCodesJson:JSON.stringify(stored)}});
+ return {ok:true,recoveryUsed:true};
 }
