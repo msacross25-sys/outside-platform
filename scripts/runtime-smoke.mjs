@@ -158,6 +158,8 @@ async function main(){
  await db.staffProfile.create({data:{userId:host.id,role:"OWNER",mfaRequired:true}});
  const hqBefore=await request("/api/hq/overview",{cookie:hostCookie});
  expect(hqBefore.response.status===403,"HQ was accessible before required MFA setup",hqBefore.data);
+ const staffBefore=await request("/api/hq/staff",{cookie:hostCookie});
+ expect(staffBefore.response.status===403,"Main Owner staff controls bypassed MFA",staffBefore.data);
 
  const setup=await request("/api/security/mfa/setup",{method:"POST",cookie:hostCookie});
  expect(setup.response.status===200&&setup.data?.secret,"MFA setup failed",setup.data);
@@ -167,6 +169,8 @@ async function main(){
 
  const hqAfter=await request("/api/hq/overview",{cookie:hostCookie});
  expect(hqAfter.response.status===200,"HQ remained blocked after MFA enrollment",hqAfter.data);
+ const staffAfter=await request("/api/hq/staff",{cookie:hostCookie});
+ expect(staffAfter.response.status===200,"Main Owner staff controls remained blocked after MFA",staffAfter.data);
 
  const secondHost=await login(host.username);
  expect(secondHost.data?.mfaRequired===true,"MFA-enabled login did not request a second factor",secondHost.data);
