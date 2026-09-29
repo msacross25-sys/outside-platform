@@ -108,10 +108,14 @@ export async function verifyMfaCodeForUser(userId:string,code:string){
  }
 
  const hash=hashRecoveryCode(normalized);
- const stored:string[]=JSON.parse(credential.recoveryCodesJson||"[]");
+ const original=credential.recoveryCodesJson||"[]";
+ const stored:string[]=JSON.parse(original);
  const index=stored.indexOf(hash);
  if(index<0)return {ok:false,recoveryUsed:false};
  stored.splice(index,1);
- await db.mfaCredential.update({where:{userId},data:{recoveryCodesJson:JSON.stringify(stored)}});
- return {ok:true,recoveryUsed:true};
+ const changed=await db.mfaCredential.updateMany({
+  where:{userId,recoveryCodesJson:original},
+  data:{recoveryCodesJson:JSON.stringify(stored)}
+ });
+ return {ok:changed.count===1,recoveryUsed:changed.count===1};
 }
