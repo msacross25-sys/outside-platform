@@ -48,6 +48,51 @@ function api(){
  });
 }
 
+function isNotFound(error:unknown){
+ return error instanceof ServerError&&
+  String(error.code).toLowerCase().includes("not");
+}
+
+async function delay(ms:number){
+ await new Promise(resolve=>setTimeout(resolve,ms));
+}
+
+async function controlCall(
+ event:string,
+ details:Record<string,unknown>,
+ operation:()=>Promise<unknown>
+){
+ for(let attempt=1;attempt<=3;attempt++){
+  try{
+   await operation();
+   return true;
+  }catch(error){
+   if(isNotFound(error))return true;
+   if(attempt<3){
+    await delay(100*attempt);
+    continue;
+   }
+   logError(event,error,{...details,attempts:attempt});
+   return false;
+  }
+ }
+ return false;
+}
+
+export async function liveKitControlHealthy(){
+ if(liveMediaMode()!=="livekit"||!liveKitConfigured())return false;
+ if(!controlEnabled())return true;
+ try{
+  await api().room.listRooms();
+  return true;
+ }catch(error){
+  logWarn("livekit_health_check_failed",{
+   error:error instanceof Error?error.message:String(error)
+  });
+  return false;
+ }
+}
+
 export async function createLiveKitSession(input:{
  roomId:string;
  userId:string;
@@ -82,9 +127,11 @@ export async function syncLiveKitPublishPermission(input:{
  userId:string;
  role:string|null|undefined;
 }){
- if(liveMediaMode()!=="livekit"||!liveKitConfigured()||!controlEnabled())return;
- try{
-  await api().room.updateParticipant(
+ if(liveMediaMode()!=="livekit"||!liveKitConfigured()||!controlEnabled())return true;
+ return controlCall(
+  "livekit_permission_sync_failed",
+  {roomId:input.roomId,userId:input.userId,role:input.role??"LISTENER"},
+  ()=>api().room.updateParticipant(
    liveKitRoomName(input.roomId),
    input.userId,
    {
@@ -95,46 +142,31 @@ export async function syncLiveKitPublishPermission(input:{
     },
     metadata:JSON.stringify({role:input.role??"LISTENER"})
    }
-  );
- }catch(error){
-  if(error instanceof ServerError&&error.code==="not_found")return;
-  logWarn("livekit_permission_sync_failed",{
-   roomId:input.roomId,
-   userId:input.userId,
-   error:error instanceof Error?error.message:String(error)
-  });
- }
+  )
+ );
 }
 
 export async function removeLiveKitParticipant(input:{
  roomId:string;
  userId:string;
 }){
- if(liveMediaMode()!=="livekit"||!liveKitConfigured()||!controlEnabled())return;
- try{
-  await api().room.removeParticipant(
+ if(liveMediaMode()!=="livekit"||!liveKitConfigured()||!controlEnabled())return true;
+ return controlCall(
+  "livekit_participant_remove_failed",
+  {roomId:input.roomId,userId:input.userId},
+  ()=>api().room.removeParticipant(
    liveKitRoomName(input.roomId),
    input.userId,
    {revokeTokenTs:BigInt(Math.floor(Date.now()/1000))}
-  );
- }catch(error){
-  if(error instanceof ServerError&&error.code==="not_found")return;
-  logError("livekit_participant_remove_failed",error,{
-   roomId:input.roomId,
-   userId:input.userId
-  });
- }
+  )
+ );
 }
 
-
 export async function closeLiveKitRoom(roomId:string){
- if(liveMediaMode()!=="livekit"||!liveKitConfigured()||!controlEnabled())return;
- try{
-  await api().room.deleteRoom(liveKitRoomName(roomId));
- }catch(error){
-  if(error instanceof ServerError&&String(error.code).toLowerCase().includes("not")){
-   return;
-  }
-  logError("livekit_room_close_failed",error,{roomId});
- }
+ if(liveMediaMode()!=="livekit"||!liveKitConfigured()||!controlEnabled())return true;
+ return controlCall(
+  "livekit_room_close_failed",
+  {roomId},
+  ()=>api().room.deleteRoom(liveKitRoomName(roomId))
+ );
 }
