@@ -13,6 +13,7 @@ if(process.env.NODE_ENV==="production"){
 }
 
 const nextConfig:NextConfig={
+ poweredByHeader:false,
  output:"standalone",
  outputFileTracingIncludes:{
   "/*":[
