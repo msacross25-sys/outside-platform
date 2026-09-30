@@ -2,6 +2,7 @@ import {NextResponse} from "next/server";
 import {db} from "@/lib/db";
 import {currentUser} from "@/lib/session";
 import {getLiveMemberAccess} from "@/lib/porchAccess";
+import {syncLiveKitPublishPermission} from "@/lib/liveTransport";
 
 export async function PATCH(request:Request,{params}:{params:Promise<{slug:string}>}){
  const {slug}=await params;const me=await currentUser();
@@ -29,5 +30,6 @@ export async function PATCH(request:Request,{params}:{params:Promise<{slug:strin
   return true;
  },{isolationLevel:"Serializable"});
  if(!result)return NextResponse.json({error:"Stage is full."},{status:409});
+ await syncLiveKitPublishPermission({roomId:access.room.id,userId:me.id,role:"SPEAKER"});
  return NextResponse.json({role:"SPEAKER"});
 }
