@@ -83,7 +83,10 @@ export async function liveKitControlHealthy(){
  if(liveMediaMode()!=="livekit"||!liveKitConfigured())return false;
  if(!controlEnabled())return true;
  try{
-  await api().room.listRooms();
+  await Promise.race([
+   api().room.listRooms(),
+   new Promise((_,reject)=>setTimeout(()=>reject(new Error("LiveKit health check timed out.")),3000))
+  ]);
   return true;
  }catch(error){
   logWarn("livekit_health_check_failed",{
