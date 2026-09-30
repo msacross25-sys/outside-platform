@@ -54,6 +54,22 @@ jobs:
             --exit-code
       - run: npm run lint
       - run: npm run typecheck
+
+      - name: Production environment preflight
+        env:
+          NEXT_PUBLIC_APP_URL: https://outside.example.test
+          EMAIL_DELIVERY_MODE: resend
+          RESEND_API_KEY: re_ci_fake_key
+          EMAIL_FROM: OUTSiiDE CI <security@outside.example.test>
+          MEDIA_STORAGE_MODE: s3
+          MEDIA_SIGNING_SECRET: ci-only-media-signing-secret-long-enough-for-production-check
+          MEDIA_S3_ENDPOINT: https://s3.example.test
+          MEDIA_S3_REGION: auto
+          MEDIA_S3_BUCKET: outside-ci
+          MEDIA_S3_ACCESS_KEY_ID: ci-access-key
+          MEDIA_S3_SECRET_ACCESS_KEY: ci-secret-key
+        run: npm run deploy:preflight
+
       - run: npm run build
       - name: Start production server
         run: |
@@ -71,6 +87,51 @@ jobs:
           exit 1
       - name: Runtime smoke test
         run: npm run smoke
+
+      - name: Stop local production server
+        run: |
+          if [ -f /tmp/outside-next.pid ]; then
+            kill "$(cat /tmp/outside-next.pid)" || true
+          fi
+
+      - name: Build production container
+        run: docker build --build-arg OUTSIDE_RELEASE="$GITHUB_SHA" --tag outside-ci .
+
+      - name: Start production container
+        run: |
+          docker run -d --rm --network host \
+            --name outside-ci \
+            -e DATABASE_URL="$DATABASE_URL" \
+            -e DIRECT_URL="$DIRECT_URL" \
+            -e NEXT_PUBLIC_APP_URL="$NEXT_PUBLIC_APP_URL" \
+            -e AUTH_SECRET="$AUTH_SECRET" \
+            -e MFA_ENCRYPTION_KEY="$MFA_ENCRYPTION_KEY" \
+            -e EMAIL_DELIVERY_MODE="$EMAIL_DELIVERY_MODE" \
+            -e MEDIA_STORAGE_MODE="$MEDIA_STORAGE_MODE" \
+            -e ALLOW_TEST_MEDIA_STORAGE="$ALLOW_TEST_MEDIA_STORAGE" \
+            -e MEDIA_SIGNING_SECRET="$MEDIA_SIGNING_SECRET" \
+            -e READINESS_MODE="$READINESS_MODE" \
+            outside-ci
+
+      - name: Verify production container
+        run: |
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:3000/api/ready >/dev/null; then
+              health="$(curl -fsS http://127.0.0.1:3000/api/health)"
+              echo "$health"
+              echo "$health" | grep -F "$GITHUB_SHA"
+              docker inspect --format='{{json .State.Health}}' outside-ci
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs outside-ci
+          exit 1
+
+      - name: Stop production container
+        if: always()
+        run: docker stop outside-ci || true
+
       - name: Show server log on failure
         if: failure()
         run: cat /tmp/outside-next.log || true
