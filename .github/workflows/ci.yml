@@ -117,6 +117,9 @@ jobs:
         run: |
           for i in {1..30}; do
             if curl -fsS http://127.0.0.1:3000/api/ready >/dev/null; then
+              health="$(curl -fsS http://127.0.0.1:3000/api/health)"
+              echo "$health"
+              echo "$health" | grep -F "$GITHUB_SHA"
               docker inspect --format='{{json .State.Health}}' outside-ci
               exit 0
             fi
