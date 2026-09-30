@@ -134,6 +134,13 @@ jobs:
           docker logs outside-ci
           exit 1
 
+      - name: Verify production container monitoring contract
+        env:
+          PRODUCTION_BASE_URL: http://127.0.0.1:3000
+          ALLOW_INSECURE_PRODUCTION_SMOKE: "true"
+          EXPECTED_RELEASE: ${{ github.sha }}
+        run: npm run monitor:production
+
       - name: Stop production container
         if: always()
         run: docker stop outside-ci || true
