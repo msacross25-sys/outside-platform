@@ -1,5 +1,6 @@
 import {createHash,createHmac,randomBytes} from "node:crypto";
 import {mediaKind} from "@/lib/media";
+import {signMediaContentToken} from "@/lib/mediaReceipt";
 
 type UploadSpec={key:string;contentType:string;size:number;url:string};
 type SignedUpload={uploadUrl:string;headers:Record<string,string>;expiresInSeconds:number};
@@ -16,8 +17,7 @@ export function mediaStorageReady(){
   process.env.MEDIA_S3_ENDPOINT&&
   process.env.MEDIA_S3_BUCKET&&
   process.env.MEDIA_S3_ACCESS_KEY_ID&&
-  process.env.MEDIA_S3_SECRET_ACCESS_KEY&&
-  process.env.MEDIA_PUBLIC_BASE_URL
+  process.env.MEDIA_S3_SECRET_ACCESS_KEY
  );
 }
 
@@ -57,8 +57,14 @@ export function createMediaObject(userId:string,contentType:string,size:number){
   date,
   randomBytes(18).toString("hex")+"."+extension(contentType)
  ].join("/");
- const base=(process.env.MEDIA_PUBLIC_BASE_URL||"https://media.invalid").replace(/\/$/,"");
- return {key,kind,url:base+"/"+encodedPath(key),contentType,size};
+ const contentToken=signMediaContentToken({v:1,key,kind,contentType});
+ return {
+  key,
+  kind,
+  url:"/api/media/content/"+contentToken,
+  contentType,
+  size
+ };
 }
 
 function s3Config(){
@@ -113,6 +119,33 @@ function canonicalQuery(params:Record<string,string>){
   .join("&");
 }
 
+function presign(method:"PUT"|"GET",key:string,expiresInSeconds:number,contentType?:string){
+ const {cfg,url,canonicalUri}=objectTarget(key);
+ const {amzDate,dateStamp}=dateParts();
+ const scope=dateStamp+"/"+cfg.region+"/s3/aws4_request";
+ const signedHeaders=contentType?"content-type;host":"host";
+ const params:Record<string,string>={
+  "X-Amz-Algorithm":"AWS4-HMAC-SHA256",
+  "X-Amz-Credential":cfg.accessKey+"/"+scope,
+  "X-Amz-Date":amzDate,
+  "X-Amz-Expires":String(expiresInSeconds),
+  "X-Amz-SignedHeaders":signedHeaders
+ };
+ if(cfg.sessionToken)params["X-Amz-Security-Token"]=cfg.sessionToken;
+
+ const query=canonicalQuery(params);
+ const canonicalHeaders=contentType
+  ?"content-type:"+contentType.trim()+"\n"+"host:"+url.host+"\n"
+  :"host:"+url.host+"\n";
+ const canonicalRequest=[method,canonicalUri,query,canonicalHeaders,signedHeaders,"UNSIGNED-PAYLOAD"].join("\n");
+ const stringToSign=["AWS4-HMAC-SHA256",amzDate,scope,sha256(canonicalRequest)].join("\n");
+ const signature=createHmac("sha256",signingKey(cfg.secretKey,dateStamp,cfg.region))
+  .update(stringToSign)
+  .digest("hex");
+
+ return url.toString()+"?"+query+"&X-Amz-Signature="+signature;
+}
+
 export function createSignedMediaUpload(spec:UploadSpec):SignedUpload{
  if(mode()==="test"&&process.env.ALLOW_TEST_MEDIA_STORAGE==="true"){
   return {
@@ -121,30 +154,18 @@ export function createSignedMediaUpload(spec:UploadSpec):SignedUpload{
    expiresInSeconds:900
   };
  }
- const {cfg,url,canonicalUri}=objectTarget(spec.key);
- const {amzDate,dateStamp}=dateParts();
- const scope=dateStamp+"/"+cfg.region+"/s3/aws4_request";
- const signedHeaders="content-type;host";
- const params:Record<string,string>={
-  "X-Amz-Algorithm":"AWS4-HMAC-SHA256",
-  "X-Amz-Credential":cfg.accessKey+"/"+scope,
-  "X-Amz-Date":amzDate,
-  "X-Amz-Expires":"900",
-  "X-Amz-SignedHeaders":signedHeaders
- };
- if(cfg.sessionToken)params["X-Amz-Security-Token"]=cfg.sessionToken;
- const query=canonicalQuery(params);
- const canonicalHeaders="content-type:"+spec.contentType.trim()+"\n"+"host:"+url.host+"\n";
- const canonicalRequest=["PUT",canonicalUri,query,canonicalHeaders,signedHeaders,"UNSIGNED-PAYLOAD"].join("\n");
- const stringToSign=["AWS4-HMAC-SHA256",amzDate,scope,sha256(canonicalRequest)].join("\n");
- const signature=createHmac("sha256",signingKey(cfg.secretKey,dateStamp,cfg.region))
-  .update(stringToSign)
-  .digest("hex");
  return {
-  uploadUrl:url.toString()+"?"+query+"&X-Amz-Signature="+signature,
+  uploadUrl:presign("PUT",spec.key,900,spec.contentType),
   headers:{"content-type":spec.contentType},
   expiresInSeconds:900
  };
+}
+
+export function createSignedMediaDownload(key:string){
+ if(mode()==="test"&&process.env.ALLOW_TEST_MEDIA_STORAGE==="true"){
+  return "https://media.example.test/test-object";
+ }
+ return presign("GET",key,900);
 }
 
 function signedRequest(method:"HEAD"|"DELETE",key:string){
@@ -157,6 +178,7 @@ function signedRequest(method:"HEAD"|"DELETE",key:string){
   "x-amz-date":amzDate
  };
  if(cfg.sessionToken)headerMap["x-amz-security-token"]=cfg.sessionToken;
+
  const headerNames=Object.keys(headerMap).sort();
  const canonicalHeaders=headerNames.map(name=>name+":"+headerMap[name].trim()+"\n").join("");
  const signedHeaders=headerNames.join(";");
@@ -174,6 +196,7 @@ function signedRequest(method:"HEAD"|"DELETE",key:string){
    ", Signature="+signature
  };
  if(cfg.sessionToken)headers["x-amz-security-token"]=cfg.sessionToken;
+
  return {url:url.toString(),headers};
 }
 
@@ -181,33 +204,40 @@ export async function verifyStoredMedia(spec:UploadSpec){
  if(mode()==="test"&&process.env.ALLOW_TEST_MEDIA_STORAGE==="true"){
   return {size:spec.size,contentType:spec.contentType};
  }
+
  const signed=signedRequest("HEAD",spec.key);
  const response=await fetch(signed.url,{
   method:"HEAD",
   headers:signed.headers,
   cache:"no-store"
  });
+
  if(!response.ok)throw new Error("Uploaded media object could not be verified.");
+
  const actualSize=Number(response.headers.get("content-length")||"0");
  const actualType=(response.headers.get("content-type")||"")
   .split(";")[0]
   .trim()
   .toLowerCase();
+
  if(actualSize!==spec.size)throw new Error("Uploaded media size did not match the authorized file.");
  if(actualType&&actualType!==spec.contentType.toLowerCase()){
   throw new Error("Uploaded media type did not match the authorized file.");
  }
+
  return {size:actualSize,contentType:actualType||spec.contentType};
 }
 
 export async function deleteStoredMedia(key:string){
  if(mode()==="test"&&process.env.ALLOW_TEST_MEDIA_STORAGE==="true")return true;
+
  const signed=signedRequest("DELETE",key);
  const response=await fetch(signed.url,{
   method:"DELETE",
   headers:signed.headers,
   cache:"no-store"
  });
+
  if(!response.ok&&response.status!==404)throw new Error("Media object could not be deleted.");
  return true;
 }
