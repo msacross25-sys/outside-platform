@@ -11,12 +11,17 @@ export function register(){
 }
 
 export const onRequestError:Instrumentation.onRequestError=async(error,request,context)=>{
+ const digest=
+  typeof error==="object"&&error!==null&&"digest" in error
+   ?String((error as {digest?:unknown}).digest??"")
+   :undefined;
+
  logError("request_error",error,{
   method:request.method,
   path:request.path,
   routerKind:context.routerKind,
   routePath:context.routePath,
   routeType:context.routeType,
-  digest:"digest" in error?error.digest:undefined
+  digest
  });
 };
