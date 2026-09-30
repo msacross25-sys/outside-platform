@@ -52,6 +52,8 @@ jobs:
             --to-schema-datamodel prisma/schema.prisma \
             --shadow-database-url "$SHADOW_DATABASE_URL" \
             --exit-code
+      - name: Verify restored database contract
+        run: npm run db:restore-verify
       - run: npm run lint
       - run: npm run typecheck
 
