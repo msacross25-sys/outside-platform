@@ -13,6 +13,13 @@ if(process.env.NODE_ENV==="production"){
 }
 
 const nextConfig:NextConfig={
+ output:"standalone",
+ outputFileTracingIncludes:{
+  "/*":[
+   "./node_modules/.prisma/client/**/*",
+   "./node_modules/@prisma/client/**/*"
+  ]
+ },
  async headers(){
   return [{source:"/:path*",headers}];
  }
