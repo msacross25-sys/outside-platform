@@ -13,7 +13,8 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:status": "prisma migrate status",
-    "deploy:preflight": "node scripts/production-preflight.mjs"
+    "deploy:preflight": "node scripts/production-preflight.mjs",
+    "monitor:production": "node scripts/production-smoke.mjs"
   },
   "dependencies": {
     "@prisma/client": "5.20.0",
