@@ -95,7 +95,7 @@ jobs:
           fi
 
       - name: Build production container
-        run: docker build --tag outside-ci .
+        run: docker build --build-arg OUTSIDE_RELEASE="$GITHUB_SHA" --tag outside-ci .
 
       - name: Start production container
         run: |
