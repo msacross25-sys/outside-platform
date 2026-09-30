@@ -273,6 +273,14 @@ async function main(){
  });
  expect(attachedDiscard.response.status===409,"Published media could be discarded",attachedDiscard.data);
 
+ const deleteMediaPost=await request("/api/posts/"+mediaPost.data.post.id,{
+  method:"DELETE",
+  cookie:aliceCookie
+ });
+ expect(deleteMediaPost.response.status===200&&deleteMediaPost.data?.deleted===true,"Media post deletion failed",deleteMediaPost.data);
+ const deletedMediaRead=await request(String(mediaRow.url),{cookie:aliceCookie});
+ expect(deletedMediaRead.response.status===404,"Deleted post media remained accessible",{status:deletedMediaRead.response.status,data:deletedMediaRead.data});
+
  const orphanAuth=await request("/api/media/upload-request",{
   method:"POST",
   cookie:aliceCookie,
