@@ -10,7 +10,11 @@ const required=[
  "MEDIA_S3_ENDPOINT",
  "MEDIA_S3_BUCKET",
  "MEDIA_S3_ACCESS_KEY_ID",
- "MEDIA_S3_SECRET_ACCESS_KEY"
+ "MEDIA_S3_SECRET_ACCESS_KEY",
+ "LIVE_MEDIA_MODE",
+ "LIVEKIT_URL",
+ "LIVEKIT_API_KEY",
+ "LIVEKIT_API_SECRET"
 ];
 
 const missing=required.filter(name=>!process.env[name]?.trim());
@@ -50,6 +54,28 @@ if((process.env.EMAIL_DELIVERY_MODE??"resend").toLowerCase()!=="resend"){
 
 if((process.env.MEDIA_STORAGE_MODE??"s3").toLowerCase()!=="s3"){
  errors.push("MEDIA_STORAGE_MODE must be s3 for production.");
+}
+
+if((process.env.LIVE_MEDIA_MODE??"").toLowerCase()!=="livekit"){
+ errors.push("LIVE_MEDIA_MODE must be livekit for production.");
+}
+
+const liveKitUrl=process.env.LIVEKIT_URL;
+if(liveKitUrl){
+ try{
+  const url=new URL(liveKitUrl);
+  if(url.protocol!=="wss:")errors.push("LIVEKIT_URL must use WSS in production.");
+ }catch{
+  errors.push("LIVEKIT_URL is not a valid URL.");
+ }
+}
+
+if((process.env.LIVEKIT_API_SECRET??"").length<16){
+ errors.push("LIVEKIT_API_SECRET is too short.");
+}
+
+if(process.env.LIVEKIT_CONTROL_MODE==="test"){
+ errors.push("LIVEKIT_CONTROL_MODE=test is not allowed in production.");
 }
 
 if(errors.length){
