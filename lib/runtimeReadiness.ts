@@ -1,6 +1,6 @@
 import {db} from "@/lib/db";
 import {mediaStorageReady} from "@/lib/mediaStorage";
-import {liveKitConfigured,liveMediaMode} from "@/lib/liveTransport";
+import {liveKitConfigured,liveKitControlHealthy,liveMediaMode} from "@/lib/liveTransport";
 
 export type ReadinessCheck={
  ok:boolean;
@@ -77,7 +77,7 @@ function mediaCheck(strict:boolean):ReadinessCheck{
  return {ok:true};
 }
 
-function liveMediaCheck(strict:boolean):ReadinessCheck{
+async function liveMediaCheck(strict:boolean):Promise<ReadinessCheck>{
  const mode=liveMediaMode();
  if(!strict&&mode==="mesh")return {ok:true};
  if(mode!=="livekit")return {ok:false,message:"Production Live media must use the SFU transport."};
@@ -88,6 +88,7 @@ function liveMediaCheck(strict:boolean):ReadinessCheck{
  }catch{
   return {ok:false,message:"LIVEKIT_URL is invalid."};
  }
+ if(!await liveKitControlHealthy())return {ok:false,message:"LiveKit control API is unreachable."};
  return {ok:true};
 }
 
@@ -116,9 +117,10 @@ async function securitySchemaCheck():Promise<ReadinessCheck>{
 
 export async function runtimeReadiness():Promise<RuntimeReadiness>{
  const strict=process.env.READINESS_MODE!=="test";
- const [database,securitySchema]=await Promise.all([
+ const [database,securitySchema,liveMedia]=await Promise.all([
   databaseCheck(),
-  securitySchemaCheck()
+  securitySchemaCheck(),
+  liveMediaCheck(strict)
  ]);
 
  const checks={
@@ -127,7 +129,7 @@ export async function runtimeReadiness():Promise<RuntimeReadiness>{
   authConfig:authConfigCheck(),
   email:emailCheck(strict),
   media:mediaCheck(strict),
-  liveMedia:liveMediaCheck(strict),
+  liveMedia,
   appUrl:appUrlCheck(strict)
  };
 
