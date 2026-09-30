@@ -39,6 +39,12 @@ function sha256(value){
  return createHash("sha256").update(value).digest("hex");
 }
 
+function decodeJwtPayload(token){
+ const parts=String(token??"").split(".");
+ expect(parts.length===3,"Expected a signed JWT.");
+ return JSON.parse(Buffer.from(parts[1],"base64url").toString("utf8"));
+}
+
 function base32Decode(input){
  const clean=input.toUpperCase().replace(/=+$/,"").replace(/[^A-Z2-7]/g,"");
  let bits=0,value=0;
@@ -412,11 +418,36 @@ async function main(){
  const start=await request("/api/porch/"+slug+"/lifecycle",{method:"POST",cookie:hostCookie,body:{action:"START"}});
  expect(start.response.status===200&&start.data?.status==="LIVE","Live start failed",start.data);
 
+ const hostMediaSession=await request("/api/porch/"+slug+"/media-session",{cookie:hostCookie});
+ expect(hostMediaSession.response.status===200&&hostMediaSession.data?.mode==="livekit"&&hostMediaSession.data?.canPublish===true,"Host did not receive publisher SFU session",hostMediaSession.data);
+ const hostMediaClaims=decodeJwtPayload(hostMediaSession.data.token);
+ expect(hostMediaClaims.sub===host.id,"Host SFU token identity was incorrect",hostMediaClaims);
+ expect(hostMediaClaims.video?.room==="outside_"+roomCreate.data.room.id,"Host SFU token room was incorrect",hostMediaClaims);
+ expect(hostMediaClaims.video?.canPublish===true&&hostMediaClaims.video?.canSubscribe===true,"Host SFU token permissions were incorrect",hostMediaClaims);
+
+ const unjoinedMedia=await request("/api/porch/"+slug+"/media-session",{cookie:bobCookie});
+ expect(unjoinedMedia.response.status===403,"Unjoined user received an SFU session",unjoinedMedia.data);
+
  const discover=await request("/api/porch");
  expect(discover.response.status===200&&discover.data?.rooms?.some(x=>x.slug===slug),"Public Live was not discoverable",discover.data);
 
  const join=await request("/api/porch/"+slug+"/join",{method:"POST",cookie:charlieCookie});
  expect(join.response.status===200&&join.data?.joined===true,"Viewer could not join public Live",join.data);
+
+ const viewerMediaSession=await request("/api/porch/"+slug+"/media-session",{cookie:charlieCookie});
+ expect(viewerMediaSession.response.status===200&&viewerMediaSession.data?.canPublish===false,"Listener received SFU publish permission",viewerMediaSession.data);
+ const viewerMediaClaims=decodeJwtPayload(viewerMediaSession.data.token);
+ expect(viewerMediaClaims.video?.canPublish===false&&viewerMediaClaims.video?.canSubscribe===true,"Listener SFU token permissions were incorrect",viewerMediaClaims);
+
+ const promote=await request("/api/porch/"+slug+"/stage",{method:"PATCH",cookie:hostCookie,body:{userId:charlie.id,action:"APPROVE"}});
+ expect(promote.response.status===200&&promote.data?.role==="SPEAKER","Host could not promote viewer to stage",promote.data);
+ const speakerMediaSession=await request("/api/porch/"+slug+"/media-session",{cookie:charlieCookie});
+ expect(speakerMediaSession.response.status===200&&speakerMediaSession.data?.canPublish===true,"Speaker did not receive SFU publish permission",speakerMediaSession.data);
+
+ const removeStage=await request("/api/porch/"+slug+"/stage",{method:"PATCH",cookie:hostCookie,body:{userId:charlie.id,action:"REMOVE"}});
+ expect(removeStage.response.status===200&&removeStage.data?.role==="LISTENER","Host could not remove speaker from stage",removeStage.data);
+ const listenerAgainSession=await request("/api/porch/"+slug+"/media-session",{cookie:charlieCookie});
+ expect(listenerAgainSession.response.status===200&&listenerAgainSession.data?.canPublish===false,"Removed speaker retained SFU publish permission",listenerAgainSession.data);
 
  const ban=await request("/api/porch/"+slug+"/moderate",{method:"POST",cookie:hostCookie,body:{userId:charlie.id,action:"BAN"}});
  expect(ban.response.status===200&&ban.data?.banned===true,"Host ban failed",ban.data);
