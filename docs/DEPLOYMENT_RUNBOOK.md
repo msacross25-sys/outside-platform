@@ -105,6 +105,44 @@ Server logs are emitted as JSON. Production log collection should preserve at le
 
 Do not log passwords, session cookies, authorization headers, raw database connection strings, MFA secrets, recovery codes, API keys, or private message bodies.
 
+## Automated production monitoring
+
+OUTSiiDE includes a non-destructive production monitor at:
+
+```
+scripts/production-smoke.mjs
+```
+
+It verifies:
+- `/api/health`
+- `/api/ready`
+- HTTPS in production
+- HSTS
+- frame protection
+- content-type protection
+- referrer policy
+- permissions policy
+- framework disclosure is disabled
+- optional exact release SHA
+
+Manual check:
+
+```
+PRODUCTION_BASE_URL=https://your-domain.example npm run monitor:production
+```
+
+GitHub Actions also includes `Production Monitor`, scheduled every five minutes.
+
+To activate scheduled monitoring after the real production domain exists, set the repository variable:
+
+```
+PRODUCTION_BASE_URL=https://your-production-domain
+```
+
+The scheduled job remains dormant while that repository variable is unset.
+
+For a manual release verification, run the workflow with the production URL and, when desired, the exact deployed release SHA.
+
 ## Rollback
 
 A rollback uses the exact previously healthy SHA-tag.
@@ -131,6 +169,20 @@ Before public launch:
 - verify the restored application can pass `/api/ready`
 
 A backup is not considered proven until a restore has been tested.
+
+After restoring into a separate non-production database, point `DATABASE_URL` and `DIRECT_URL` at that restored database and run:
+
+```
+npx prisma migrate status
+npm run db:restore-verify
+```
+
+The restore verifier is read-only. It confirms:
+- repository migration history matches the restored database
+- no unfinished migrations remain
+- critical authentication, social, Live, media and financial tables are readable
+
+Do not run a restore drill against the live production database.
 
 ## Secrets
 
