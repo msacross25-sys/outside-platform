@@ -88,6 +88,12 @@ jobs:
       - name: Runtime smoke test
         run: npm run smoke
 
+      - name: Production monitor contract
+        env:
+          PRODUCTION_BASE_URL: http://127.0.0.1:3000
+          ALLOW_INSECURE_PRODUCTION_SMOKE: "true"
+        run: npm run monitor:production
+
       - name: Stop local production server
         run: |
           if [ -f /tmp/outside-next.pid ]; then
