@@ -33,6 +33,7 @@ jobs:
       MEDIA_STORAGE_MODE: test
       ALLOW_TEST_MEDIA_STORAGE: "true"
       MEDIA_SIGNING_SECRET: ci-only-media-signing-secret-not-for-production
+      READINESS_MODE: test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
