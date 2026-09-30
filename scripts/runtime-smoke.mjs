@@ -95,6 +95,9 @@ async function main(){
  const health=await request("/api/health");
  expect(health.response.status===200&&health.data?.ok===true,"Health endpoint failed",health);
 
+ const ready=await request("/api/ready");
+ expect(ready.response.status===200&&ready.data?.ready===true,"Runtime readiness endpoint failed",ready.data);
+
  const alice=await signup("smokea"+suffix,"Smoke Alice");
  const bob=await signup("smokeb"+suffix,"Smoke Bob");
  const charlie=await signup("smokec"+suffix,"Smoke Charlie");
@@ -160,6 +163,8 @@ async function main(){
  expect(hqBefore.response.status===403,"HQ was accessible before required MFA setup",hqBefore.data);
  const staffBefore=await request("/api/hq/staff",{cookie:hostCookie});
  expect(staffBefore.response.status===403,"Main Owner staff controls bypassed MFA",staffBefore.data);
+ const healthBefore=await request("/api/hq/system/health",{cookie:hostCookie});
+ expect(healthBefore.response.status===403,"Detailed system health bypassed Owner MFA",healthBefore.data);
 
  const setup=await request("/api/security/mfa/setup",{method:"POST",cookie:hostCookie});
  expect(setup.response.status===200&&setup.data?.secret,"MFA setup failed",setup.data);
@@ -171,6 +176,9 @@ async function main(){
  expect(hqAfter.response.status===200,"HQ remained blocked after MFA enrollment",hqAfter.data);
  const staffAfter=await request("/api/hq/staff",{cookie:hostCookie});
  expect(staffAfter.response.status===200,"Main Owner staff controls remained blocked after MFA",staffAfter.data);
+ const healthAfter=await request("/api/hq/system/health",{cookie:hostCookie});
+ expect(healthAfter.response.status===200&&healthAfter.data?.ready===true,"Owner system health did not report ready after MFA",healthAfter.data);
+ expect(Object.values(healthAfter.data?.checks??{}).every(check=>check?.ok===true),"One or more readiness checks failed in CI",healthAfter.data);
 
  const secondHost=await login(host.username);
  expect(secondHost.data?.mfaRequired===true,"MFA-enabled login did not request a second factor",secondHost.data);
