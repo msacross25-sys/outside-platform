@@ -35,6 +35,10 @@ function apiHost(wsUrl:string){
  return url.toString().replace(/\/$/,"");
 }
 
+function controlEnabled(){
+ return process.env.LIVEKIT_CONTROL_MODE!=="test";
+}
+
 function api(){
  const cfg=config();
  return new LiveKitAPI({
@@ -78,7 +82,7 @@ export async function syncLiveKitPublishPermission(input:{
  userId:string;
  role:string|null|undefined;
 }){
- if(liveMediaMode()!=="livekit"||!liveKitConfigured())return;
+ if(liveMediaMode()!=="livekit"||!liveKitConfigured()||!controlEnabled())return;
  try{
   await api().room.updateParticipant(
    liveKitRoomName(input.roomId),
@@ -106,7 +110,7 @@ export async function removeLiveKitParticipant(input:{
  roomId:string;
  userId:string;
 }){
- if(liveMediaMode()!=="livekit"||!liveKitConfigured())return;
+ if(liveMediaMode()!=="livekit"||!liveKitConfigured()||!controlEnabled())return;
  try{
   await api().room.removeParticipant(
    liveKitRoomName(input.roomId),
@@ -119,5 +123,18 @@ export async function removeLiveKitParticipant(input:{
    roomId:input.roomId,
    userId:input.userId
   });
+ }
+}
+
+
+export async function closeLiveKitRoom(roomId:string){
+ if(liveMediaMode()!=="livekit"||!liveKitConfigured()||!controlEnabled())return;
+ try{
+  await api().room.deleteRoom(liveKitRoomName(roomId));
+ }catch(error){
+  if(error instanceof ServerError&&String(error.code).toLowerCase().includes("not")){
+   return;
+  }
+  logError("livekit_room_close_failed",error,{roomId});
  }
 }
