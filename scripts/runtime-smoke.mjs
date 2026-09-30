@@ -255,8 +255,16 @@ async function main(){
  const mediaRow=await db.media.findFirst({where:{postId:mediaPost.data.post.id}});
  expect(Boolean(mediaRow)&&String(mediaRow.url).startsWith("/api/media/content/"),"Published media row was not private-delivery backed",mediaRow);
 
+ await db.post.update({where:{id:mediaPost.data.post.id},data:{visibility:"FOLLOWERS"}});
+
  const mediaRead=await request(String(mediaRow.url),{cookie:aliceCookie});
- expect(mediaRead.response.status===307,"Authorized media did not redirect to short-lived storage URL",{status:mediaRead.response.status,data:mediaRead.data});
+ expect(mediaRead.response.status===307,"Media owner did not receive short-lived storage redirect",{status:mediaRead.response.status,data:mediaRead.data});
+
+ const mediaDenied=await request(String(mediaRow.url),{cookie:charlieCookie});
+ expect(mediaDenied.response.status===404,"Non-follower accessed followers-only media",{status:mediaDenied.response.status,data:mediaDenied.data});
+
+ const mediaAnonymous=await request(String(mediaRow.url));
+ expect(mediaAnonymous.response.status===404,"Anonymous viewer accessed followers-only media",{status:mediaAnonymous.response.status,data:mediaAnonymous.data});
 
  const attachedDiscard=await request("/api/media/discard",{
   method:"DELETE",
