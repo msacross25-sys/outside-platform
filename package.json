@@ -12,7 +12,8 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
-    "db:status": "prisma migrate status"
+    "db:status": "prisma migrate status",
+    "deploy:preflight": "node scripts/production-preflight.mjs"
   },
   "dependencies": {
     "@prisma/client": "5.20.0",
