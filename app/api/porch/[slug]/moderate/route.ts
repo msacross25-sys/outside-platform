@@ -1,6 +1,7 @@
 import {NextResponse} from "next/server";
 import {db} from "@/lib/db";
 import {currentUser} from "@/lib/session";
+import {removeLiveKitParticipant} from "@/lib/liveTransport";
 
 async function access(slug:string,userId:string){
  const room=await db.porchRoom.findUnique({where:{slug},include:{members:{where:{userId},select:{role:true}}}});
@@ -44,6 +45,7 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
    db.liveViewerPresence.updateMany({where:{roomId:a.room.id,userId},data:{active:false,lastSeenAt:new Date()}}),
    db.liveSignal.deleteMany({where:{roomId:a.room.id,OR:[{senderId:userId},{targetUserId:userId}]}})
   ]);
+  await removeLiveKitParticipant({roomId:a.room.id,userId});
   return NextResponse.json({kicked:true});
  }
 
@@ -59,6 +61,7 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
    db.liveViewerPresence.updateMany({where:{roomId:a.room.id,userId},data:{active:false,lastSeenAt:new Date()}}),
    db.liveSignal.deleteMany({where:{roomId:a.room.id,OR:[{senderId:userId},{targetUserId:userId}]}})
   ]);
+  await removeLiveKitParticipant({roomId:a.room.id,userId});
   return NextResponse.json({banned:true});
  }
 
