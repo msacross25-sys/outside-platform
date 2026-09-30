@@ -18,8 +18,10 @@ RUN npx prisma generate
 RUN npm run build
 
 FROM node:22-bookworm-slim AS runner
+ARG OUTSIDE_RELEASE=unknown
 WORKDIR /app
 ENV NODE_ENV=production
+ENV OUTSIDE_RELEASE=${OUTSIDE_RELEASE}
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
