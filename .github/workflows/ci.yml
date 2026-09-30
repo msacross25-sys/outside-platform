@@ -30,6 +30,9 @@ jobs:
       AUTH_SECRET: ci-only-outsiide-auth-secret-not-for-production
       MFA_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
       EMAIL_DELIVERY_MODE: test
+      MEDIA_STORAGE_MODE: test
+      ALLOW_TEST_MEDIA_STORAGE: "true"
+      MEDIA_SIGNING_SECRET: ci-only-media-signing-secret-not-for-production
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

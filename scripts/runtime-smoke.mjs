@@ -203,6 +203,113 @@ async function main(){
  });
  expect(privateProfile.response.status===200&&privateProfile.data?.user?.privacy==="PRIVATE","Private profile update failed",privateProfile.data);
 
+ console.log("6b. signed media upload and private delivery");
+ const uploadAuth=await request("/api/media/upload-request",{
+  method:"POST",
+  cookie:aliceCookie,
+  body:{type:"image/jpeg",size:4,name:"smoke.jpg"}
+ });
+ expect(uploadAuth.response.status===200&&uploadAuth.data?.ready===true&&uploadAuth.data?.uploadToken,"Media upload authorization failed",uploadAuth.data);
+
+ const uploadTarget=String(uploadAuth.data.uploadUrl).startsWith("http")
+  ?String(uploadAuth.data.uploadUrl)
+  :base+String(uploadAuth.data.uploadUrl);
+ const uploadPut=await fetch(uploadTarget,{
+  method:"PUT",
+  headers:{...(uploadAuth.data.headers??{}),cookie:aliceCookie},
+  body:Buffer.from([1,2,3,4]),
+  redirect:"manual"
+ });
+ expect(uploadPut.status===204||uploadPut.ok,"Media upload target failed",{status:uploadPut.status});
+
+ const completed=await request("/api/media/complete",{
+  method:"POST",
+  cookie:aliceCookie,
+  body:{uploadToken:uploadAuth.data.uploadToken}
+ });
+ expect(completed.response.status===200&&completed.data?.media?.receipt,"Media completion failed",completed.data);
+ expect(String(completed.data.media.url).startsWith("/api/media/content/"),"Media did not receive private delivery URL",completed.data);
+
+ const forgedMedia=await request("/api/posts",{
+  method:"POST",
+  cookie:aliceCookie,
+  body:{caption:"forged media",media:[{type:"IMAGE",url:"https://example.test/not-owned.jpg"}]}
+ });
+ expect(forgedMedia.response.status===400,"Arbitrary external media URL was accepted",forgedMedia.data);
+
+ const receipt=String(completed.data.media.receipt);
+ const tamperedReceipt=receipt.slice(0,-1)+(receipt.endsWith("A")?"B":"A");
+ const tamperedPost=await request("/api/posts",{
+  method:"POST",
+  cookie:aliceCookie,
+  body:{caption:"tampered media",media:[{receipt:tamperedReceipt}]}
+ });
+ expect(tamperedPost.response.status===400,"Tampered media receipt was accepted",tamperedPost.data);
+
+ const mediaPost=await request("/api/posts",{
+  method:"POST",
+  cookie:aliceCookie,
+  body:{caption:"Runtime media post",media:[{receipt}]}
+ });
+ expect(mediaPost.response.status===201&&mediaPost.data?.post?.id,"Signed media post failed",mediaPost.data);
+ const mediaRow=await db.media.findFirst({where:{postId:mediaPost.data.post.id}});
+ expect(Boolean(mediaRow)&&String(mediaRow.url).startsWith("/api/media/content/"),"Published media row was not private-delivery backed",mediaRow);
+
+ await db.post.update({where:{id:mediaPost.data.post.id},data:{visibility:"FOLLOWERS"}});
+
+ const mediaRead=await request(String(mediaRow.url),{cookie:aliceCookie});
+ expect(mediaRead.response.status===307,"Media owner did not receive short-lived storage redirect",{status:mediaRead.response.status,data:mediaRead.data});
+
+ const mediaDenied=await request(String(mediaRow.url),{cookie:charlieCookie});
+ expect(mediaDenied.response.status===404,"Non-follower accessed followers-only media",{status:mediaDenied.response.status,data:mediaDenied.data});
+
+ const mediaAnonymous=await request(String(mediaRow.url));
+ expect(mediaAnonymous.response.status===404,"Anonymous viewer accessed followers-only media",{status:mediaAnonymous.response.status,data:mediaAnonymous.data});
+
+ const attachedDiscard=await request("/api/media/discard",{
+  method:"DELETE",
+  cookie:aliceCookie,
+  body:{token:receipt}
+ });
+ expect(attachedDiscard.response.status===409,"Published media could be discarded",attachedDiscard.data);
+
+ const deleteMediaPost=await request("/api/posts/"+mediaPost.data.post.id,{
+  method:"DELETE",
+  cookie:aliceCookie
+ });
+ expect(deleteMediaPost.response.status===200&&deleteMediaPost.data?.deleted===true,"Media post deletion failed",deleteMediaPost.data);
+ const deletedMediaRead=await request(String(mediaRow.url),{cookie:aliceCookie});
+ expect(deletedMediaRead.response.status===404,"Deleted post media remained accessible",{status:deletedMediaRead.response.status,data:deletedMediaRead.data});
+
+ const orphanAuth=await request("/api/media/upload-request",{
+  method:"POST",
+  cookie:aliceCookie,
+  body:{type:"image/jpeg",size:4,name:"orphan.jpg"}
+ });
+ expect(orphanAuth.response.status===200&&orphanAuth.data?.uploadToken,"Orphan upload authorization failed",orphanAuth.data);
+ const orphanTarget=String(orphanAuth.data.uploadUrl).startsWith("http")
+  ?String(orphanAuth.data.uploadUrl)
+  :base+String(orphanAuth.data.uploadUrl);
+ const orphanPut=await fetch(orphanTarget,{
+  method:"PUT",
+  headers:{...(orphanAuth.data.headers??{}),cookie:aliceCookie},
+  body:Buffer.from([5,6,7,8]),
+  redirect:"manual"
+ });
+ expect(orphanPut.status===204||orphanPut.ok,"Orphan media upload target failed",{status:orphanPut.status});
+ const orphanComplete=await request("/api/media/complete",{
+  method:"POST",
+  cookie:aliceCookie,
+  body:{uploadToken:orphanAuth.data.uploadToken}
+ });
+ expect(orphanComplete.response.status===200&&orphanComplete.data?.media?.receipt,"Orphan media completion failed",orphanComplete.data);
+ const orphanDiscard=await request("/api/media/discard",{
+  method:"DELETE",
+  cookie:aliceCookie,
+  body:{token:orphanComplete.data.media.receipt}
+ });
+ expect(orphanDiscard.response.status===200&&orphanDiscard.data?.deleted===true,"Abandoned media cleanup failed",orphanDiscard.data);
+
  console.log("7. private follow request and approval");
  const followRequest=await request("/api/follows/"+bob.username,{method:"POST",cookie:aliceCookie});
  expect(followRequest.response.status===202&&followRequest.data?.requested===true,"Private follow should create a request",followRequest.data);
