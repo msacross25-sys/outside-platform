@@ -1,5 +1,6 @@
 import {db} from "@/lib/db";
 import {mediaStorageReady} from "@/lib/mediaStorage";
+import {liveKitConfigured,liveMediaMode} from "@/lib/liveTransport";
 
 export type ReadinessCheck={
  ok:boolean;
@@ -15,6 +16,7 @@ export type RuntimeReadiness={
   authConfig:ReadinessCheck;
   email:ReadinessCheck;
   media:ReadinessCheck;
+  liveMedia:ReadinessCheck;
   appUrl:ReadinessCheck;
  };
 };
@@ -75,6 +77,20 @@ function mediaCheck(strict:boolean):ReadinessCheck{
  return {ok:true};
 }
 
+function liveMediaCheck(strict:boolean):ReadinessCheck{
+ const mode=liveMediaMode();
+ if(!strict&&mode==="mesh")return {ok:true};
+ if(mode!=="livekit")return {ok:false,message:"Production Live media must use the SFU transport."};
+ if(!liveKitConfigured())return {ok:false,message:"LiveKit credentials or server URL are incomplete."};
+ try{
+  const url=new URL(process.env.LIVEKIT_URL!);
+  if(strict&&url.protocol!=="wss:")return {ok:false,message:"Production LiveKit URL must use WSS."};
+ }catch{
+  return {ok:false,message:"LIVEKIT_URL is invalid."};
+ }
+ return {ok:true};
+}
+
 async function databaseCheck():Promise<ReadinessCheck>{
  try{
   await db.$queryRaw`SELECT 1`;
@@ -111,6 +127,7 @@ export async function runtimeReadiness():Promise<RuntimeReadiness>{
   authConfig:authConfigCheck(),
   email:emailCheck(strict),
   media:mediaCheck(strict),
+  liveMedia:liveMediaCheck(strict),
   appUrl:appUrlCheck(strict)
  };
 
