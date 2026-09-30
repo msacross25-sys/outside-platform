@@ -14,7 +14,8 @@
     "db:deploy": "prisma migrate deploy",
     "db:status": "prisma migrate status",
     "deploy:preflight": "node scripts/production-preflight.mjs",
-    "monitor:production": "node scripts/production-smoke.mjs"
+    "monitor:production": "node scripts/production-smoke.mjs",
+    "db:restore-verify": "node scripts/database-restore-verify.mjs"
   },
   "dependencies": {
     "@prisma/client": "5.20.0",
