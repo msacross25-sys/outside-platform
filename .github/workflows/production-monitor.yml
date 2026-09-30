@@ -1,0 +1,38 @@
+name: Production Monitor
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Production base URL, including https://
+        required: true
+        type: string
+      expected_release:
+        description: Optional exact release SHA to verify
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-monitor
+  cancel-in-progress: true
+
+jobs:
+  check:
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.PRODUCTION_BASE_URL != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PRODUCTION_BASE_URL: ${{ github.event.inputs.base_url || vars.PRODUCTION_BASE_URL }}
+      EXPECTED_RELEASE: ${{ github.event.inputs.expected_release }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check OUTSiiDE production
+        run: node scripts/production-smoke.mjs
