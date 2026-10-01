@@ -19,6 +19,7 @@ export type RuntimeReadiness={
   media:ReadinessCheck;
   liveTransport:ReadinessCheck;
   liveRecording:ReadinessCheck;
+  clipProcessing:ReadinessCheck;
   appUrl:ReadinessCheck;
  };
 };
@@ -101,6 +102,16 @@ function liveRecordingCheck(strict:boolean):ReadinessCheck{
  return {ok:true};
 }
 
+function clipProcessingCheck(strict:boolean):ReadinessCheck{
+ if(!strict&&process.env.MEDIA_TRANSCODING_TEST_MODE==="true"&&clipProcessingMode()==="external")return {ok:true};
+ if(clipProcessingMode()!=="external")return {ok:false,message:"Production clip processing must use the configured transcoding service."};
+ if(!clipProcessingReady())return {ok:false,message:"Clip transcoding service URL or callback signing secret is incomplete."};
+ if((process.env.MEDIA_PROCESSING_SIGNING_SECRET??"").length<32){
+  return {ok:false,message:"MEDIA_PROCESSING_SIGNING_SECRET must be at least 32 characters."};
+ }
+ return {ok:true};
+}
+
 async function databaseCheck():Promise<ReadinessCheck>{
  try{
   await db.$queryRaw`SELECT 1`;
@@ -139,6 +150,7 @@ export async function runtimeReadiness():Promise<RuntimeReadiness>{
   media:mediaCheck(strict),
   liveTransport:liveTransportCheck(strict),
   liveRecording:liveRecordingCheck(strict),
+  clipProcessing:clipProcessingCheck(strict),
   appUrl:appUrlCheck(strict)
  };
 
