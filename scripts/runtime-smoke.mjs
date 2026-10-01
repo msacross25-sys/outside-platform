@@ -98,6 +98,9 @@ async function main(){
  const ready=await request("/api/ready");
  expect(ready.response.status===200&&ready.data?.ready===true,"Runtime readiness endpoint failed",ready.data);
 
+ const unsignedWebhook=await request("/api/webhooks/livekit",{method:"POST",body:{event:"egress_ended"}});
+ expect(unsignedWebhook.response.status===401,"Unsigned LiveKit webhook was accepted",unsignedWebhook.data);
+
  const alice=await signup("smokea"+suffix,"Smoke Alice");
  const bob=await signup("smokeb"+suffix,"Smoke Bob");
  const charlie=await signup("smokec"+suffix,"Smoke Charlie");
