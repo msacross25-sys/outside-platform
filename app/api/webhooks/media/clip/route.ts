@@ -11,7 +11,14 @@ import {clipObjectKey} from "@/lib/clipProcessing";
 export const dynamic="force-dynamic";
 
 export async function POST(request:Request){
+ const declaredLength=Number(request.headers.get("content-length")??"0");
+ if(Number.isFinite(declaredLength)&&declaredLength>16384){
+  return NextResponse.json({error:"Callback body is too large."},{status:413});
+ }
  const raw=await request.text();
+ if(Buffer.byteLength(raw,"utf8")>16384){
+  return NextResponse.json({error:"Callback body is too large."},{status:413});
+ }
 
  let verified=false;
  try{
