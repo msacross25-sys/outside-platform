@@ -199,6 +199,45 @@ export async function finalizeBattle(battleId:string,endedAt=new Date()){
     where:{tournamentId:battle.tournamentId,userId:{in:winnerIds}},
     data:{eliminated:false}
    });
+
+   const remaining=await tx.battleTournamentEntry.findMany({
+    where:{tournamentId:battle.tournamentId,eliminated:false},
+    select:{id:true,userId:true}
+   });
+
+   if(remaining.length===1){
+    await tx.battleTournamentEntry.update({
+     where:{id:remaining[0].id},
+     data:{placement:1}
+    });
+    await tx.battleTournament.update({
+     where:{id:battle.tournamentId},
+     data:{status:"ENDED",endsAt:endedAt}
+    });
+    await tx.userBadge.upsert({
+     where:{userId_key:{userId:remaining[0].userId,key:"TOURNAMENT_CHAMPION"}},
+     create:{userId:remaining[0].userId,key:"TOURNAMENT_CHAMPION",name:"Tournament Champion",icon:"👑",featured:true},
+     update:{featured:true}
+    });
+   }else{
+    const tournament=await tx.battleTournament.findUnique({
+     where:{id:battle.tournamentId},
+     select:{currentRound:true}
+    });
+    const unfinished=await tx.battle.count({
+     where:{
+      tournamentId:battle.tournamentId,
+      roundNumber:tournament?.currentRound??battle.roundNumber,
+      status:{in:["SCHEDULED","LIVE"]}
+     }
+    });
+    if(unfinished===0){
+     await tx.battleTournament.update({
+      where:{id:battle.tournamentId},
+      data:{currentRound:{increment:1}}
+     });
+    }
+   }
   }
 
   return tx.battle.update({
