@@ -34,6 +34,9 @@ export async function GET(_:Request,{params}:{params:Promise<{slug:string}>}){
  if((!room.replay.visible||room.replay.status==="DELETED")&&!owner){
   return NextResponse.json({error:"Replay unavailable."},{status:404});
  }
+ if(!owner&&room.replay.status!=="READY"){
+  return NextResponse.json({error:"Replay unavailable."},{status:404});
+ }
  if(!owner&&room.visibility==="PRIVATE"){
   return NextResponse.json({error:"Replay unavailable."},{status:404});
  }
