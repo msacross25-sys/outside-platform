@@ -19,6 +19,7 @@ const userSelect={
  bio:true,
  avatarUrl:true,
  profileVideoUrl:true,
+ regionCode:true,
  privacy:true,
  messagePrivacy:true,
  commentPrivacy:true,
