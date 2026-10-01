@@ -21,7 +21,8 @@ const authMarkers=[
  "mainOwner(",
  "currentAuth(",
  "financeStaff(",
- "authorizedClipWorker("
+ "authorizedClipWorker(",
+ "authorizedBattleRollup("
 ];
 
 const signedWebhookMarkers=[
