@@ -11,7 +11,7 @@ import {
 type Member={userId:string;role:string;user:{username:string;displayName:string}};
 type Team={id:string;side:number;memberIds:string[];score:number;activeMultiplier:number;multiplierExpiresAt:string|null};
 type Battle={id:string;mode:string;theme:string;durationMinutes:number;status:string;startedAt:string|null;endedAt:string|null;teams:Team[]};
-type BattleResponse={battle:Battle|null;endsAt?:string;surgeStartsAt?:string;expired?:boolean;recent?:Battle|null};
+type BattleResponse={battle:Battle|null;endsAt?:string;surgeStartsAt?:string;expired?:boolean;recent?:Battle|null;rematchRequests?:number};
 type Tournament={id:string;name:string;status:string;currentRound:number};
 
 export function BattleCenter({slug,members,host,status,meId}:{slug:string;members:Member[];host:boolean;status:string;meId:string}){
@@ -31,6 +31,7 @@ export function BattleCenter({slug,members,host,status,meId}:{slug:string;member
  const [tournamentId,setTournamentId]=useState("");
  const [roundNumber,setRoundNumber]=useState(1);
  const [matchNumber,setMatchNumber]=useState(1);
+ const [rematchRequests,setRematchRequests]=useState(0);
 
  async function load(){
   const response=await fetch(`/api/porch/${slug}/battle`,{cache:"no-store"});
@@ -53,6 +54,7 @@ export function BattleCenter({slug,members,host,status,meId}:{slug:string;member
    setEndsAt(null);
    setSurgeStartsAt(null);
    if(data.recent)setLastResult(data.recent);
+   setRematchRequests(data.rematchRequests??0);
   }
  }
 
@@ -127,6 +129,39 @@ export function BattleCenter({slug,members,host,status,meId}:{slug:string;member
   setBattle(null);setEndsAt(null);setSurgeStartsAt(null);setMessage("Battle ended.");
  }
 
+ async function requestRematch(){
+  setMessage("");
+  const response=await fetch(`/api/porch/${slug}/battle/card`,{
+   method:"POST",
+   headers:{"content-type":"application/json"},
+   body:JSON.stringify({card:"REMATCH"})
+  });
+  const data=await response.json();
+  if(!response.ok){setMessage(data.error??"Unable to request rematch.");return}
+  setMessage(data.alreadyRequested?"🔁 Your rematch request is already active.":"🔁 Rematch Card used. The Host can restart the matchup.");
+  await load();
+ }
+
+ async function startRequestedRematch(){
+  if(!lastResult)return;
+  setMessage("");
+  const response=await fetch(`/api/porch/${slug}/battle`,{
+   method:"POST",
+   headers:{"content-type":"application/json"},
+   body:JSON.stringify({rematchBattleId:lastResult.id})
+  });
+  const data=await response.json();
+  if(!response.ok){setMessage(data.error??"Unable to start rematch.");return}
+  setBattle(data.battle);
+  setLastResult(null);
+  setRematchRequests(0);
+  const startMs=data.battle?.startedAt?new Date(data.battle.startedAt).getTime():Date.now();
+  const endMs=startMs+data.battle.durationMinutes*60000;
+  setEndsAt(new Date(endMs).toISOString());
+  setSurgeStartsAt(new Date(endMs-30000).toISOString());
+  setMessage("🔁 Rematch started.");
+ }
+
  async function useDoublePointCard(){
   setMessage("");
   const response=await fetch(`/api/porch/${slug}/battle/card`,{
@@ -185,6 +220,8 @@ export function BattleCenter({slug,members,host,status,meId}:{slug:string;member
    {lastResult&&<div className="battleResult">
     <h2>{resultTheme?.icon??"🏁"} {winner}</h2>
     <p>Final score: <b>{(resultLeft?.score??0).toLocaleString()}</b> — <b>{(resultRight?.score??0).toLocaleString()}</b></p>
+    {lastResult.mode!=="TOURNAMENT"&&lastResult.teams.some(team=>team.memberIds.includes(meId))&&<button type="button" onClick={requestRematch}>Use Rematch Card</button>}
+    {host&&rematchRequests>0&&lastResult.mode!=="TOURNAMENT"&&<button type="button" onClick={startRequestedRematch}>Start Requested Rematch ({rematchRequests})</button>}
    </div>}
    {host?<><h2>Start a battle</h2>
     <label>Mode <select value={mode} onChange={event=>{setMode(event.target.value);setLeft([]);setRight([])}}>
