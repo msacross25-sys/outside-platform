@@ -155,6 +155,13 @@ enum PayoutStatus {
   FAILED
   CANCELLED
 }
+enum CoinPurchaseStatus {
+  PENDING
+  PAID
+  REFUNDED
+  CHARGEBACK
+  FAILED
+}
 enum StaffRole {
   OWNER
   CO_OWNER
@@ -232,6 +239,7 @@ model User {
   liveSignalsSent LiveSignal[] @relation("signalSender")
   liveSignalsReceived LiveSignal[] @relation("signalTarget")
   coinWallet CoinWallet?
+  coinPurchases CoinPurchase[]
   sentGiftTransactions GiftTransaction[] @relation("giftSender")
   receivedGiftTransactions GiftTransaction[] @relation("giftRecipient")
   creatorPayouts CreatorPayout[]
@@ -697,6 +705,9 @@ model HostApplication {
   taxProviderRef String?
   taxCompletedAt DateTime?
   payoutEnabled Boolean @default(false)
+  payoutProvider String?
+  payoutProviderRef String? @unique
+  payoutOnboardingCompleteAt DateTime?
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([status, appliedAt])
 }
@@ -755,6 +766,27 @@ model CoinWallet {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CoinPurchase {
+  id String @id @default(cuid())
+  userId String
+  provider String
+  providerSessionId String? @unique
+  providerPaymentId String? @unique
+  amountCents Int
+  currency String @default("usd")
+  coins BigInt
+  refundedCents Int @default(0)
+  reversedCoins BigInt @default(0)
+  status CoinPurchaseStatus @default(PENDING)
+  createdAt DateTime @default(now())
+  paidAt DateTime?
+  refundedAt DateTime?
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
 }
 
 model GiftTransaction {
