@@ -3,6 +3,7 @@ import {db} from "@/lib/db";
 import {currentUser} from "@/lib/session";
 import {contactAllowed} from "@/lib/contactPrivacy";
 import {getPostAccess} from "@/lib/postAccess";
+import {createNotification} from "@/lib/notifications";
 
 export async function POST(request:Request,{params}:{params:Promise<{id:string}>}){
  const {id}=await params;
@@ -20,6 +21,6 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
  }
 
  const comment=await db.comment.create({data:{postId:id,authorId:me.id,body:text},select:{id:true,body:true,createdAt:true}});
- if(post.authorId!==me.id)await db.notification.create({data:{recipientId:post.authorId,actorId:me.id,type:"COMMENT",postId:id}});
+ if(post.authorId!==me.id)await createNotification({recipientId:post.authorId,actorId:me.id,type:"COMMENT",postId:id,targetUrl:"/post/"+id});
  return NextResponse.json({comment},{status:201});
 }
