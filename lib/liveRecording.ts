@@ -1,4 +1,5 @@
 import {EgressClient,EncodedFileOutput,S3Upload} from "livekit-server-sdk";
+import {WebhookConfig} from "@livekit/protocol";
 import {livekitApiUrl,livekitCredentials,livekitRoomName} from "@/lib/livekit";
 
 export function liveRecordingMode(){
@@ -84,10 +85,12 @@ export async function startLiveRecording(roomId:string,roomType:"VIDEO"|"VOICE")
   {file:output(roomId)},
   {
    audioOnly:roomType==="VOICE",
-   webhooks:[{
-    url:webhookUrl(),
-    signingKey:apiKey
-   }]
+   webhooks:[
+    new WebhookConfig({
+     url:webhookUrl(),
+     signingKey:apiKey
+    })
+   ]
   }
  );
 }
