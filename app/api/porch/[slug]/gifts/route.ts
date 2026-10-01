@@ -62,7 +62,9 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
   if(participantIds.has(me.id))return NextResponse.json({error:"Battle participants cannot send gifts during their own active match."},{status:400});
 
   const split=battleSplit(gift.valueCents);
-  const multiplier=surgeMultiplier(activeBattle.startedAt,activeBattle.durationMinutes);
+  const surge=surgeMultiplier(activeBattle.startedAt,activeBattle.durationMinutes);
+  const cardMultiplier=team.multiplierExpiresAt&&team.multiplierExpiresAt>new Date()?Math.max(1,team.activeMultiplier):1;
+  const multiplier=Math.min(4,surge*cardMultiplier);
   const awardedPoints=gift.coins*multiplier;
   const creatorShares=splitAcross(split.creatorShareCents,team.memberIds);
 
@@ -154,7 +156,8 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
      basePoints:gift.coins,
      multiplier,
      points:awardedPoints,
-     lastMinuteSurge:multiplier>1
+     lastMinuteSurge:surge>1,
+     cardMultiplier
     },
     split
    });
