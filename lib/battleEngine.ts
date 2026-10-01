@@ -257,8 +257,22 @@ export async function finalizeBattle(battleId:string,endedAt=new Date()){
      }
 
      if(previousStreak<25&&currentStreak>=25){
+      const existingVipUntil=existing?.vipUntil&&existing.vipUntil>endedAt?existing.vipUntil:endedAt;
+      const vipUntil=new Date(existingVipUntil.getTime()+STREAK_25_VIP_DAYS*86400000);
+      await tx.battleProfile.update({
+       where:{userId},
+       data:{vipUntil}
+      });
       await tx.battleRewardLedger.create({
-       data:{userId,battleId:battle.id,kind:"STREAK_25_VIP",currency:"VIP_DAY",amount:STREAK_25_VIP_DAYS,status:"AVAILABLE"}
+       data:{
+        userId,
+        battleId:battle.id,
+        kind:"STREAK_25_VIP",
+        currency:"VIP_DAY",
+        amount:STREAK_25_VIP_DAYS,
+        status:"CLAIMED",
+        metadataJson:JSON.stringify({vipUntil:vipUntil.toISOString()})
+       }
       });
      }
 
