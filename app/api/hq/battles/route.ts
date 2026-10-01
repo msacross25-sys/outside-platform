@@ -8,9 +8,10 @@ export async function GET(){
  const me=await currentUser();
  if(!me||!await financeStaff(me.id))return NextResponse.json({error:"Finance permission required."},{status:403});
 
- const [liveBattles,pendingEarnings,reserves,recentAwards]=await Promise.all([
+ const [liveBattles,pendingEarnings,pendingRewards,reserves,recentAwards]=await Promise.all([
   db.battle.count({where:{status:"LIVE"}}),
   db.battleEarning.aggregate({where:{status:"PENDING"},_sum:{amountCents:true},_count:true}),
+  db.battleEarning.findMany({where:{status:"PENDING",giftTransactionId:null},orderBy:{createdAt:"asc"},take:50,include:{user:{select:{username:true,displayName:true}}}}),
   db.battleRewardLedger.groupBy({
    by:["kind"],
    where:{status:"RESERVED",kind:{in:["WEEKLY_JACKPOT_RESERVE","SEASON_CHAMPIONSHIP_RESERVE"]}},
@@ -27,6 +28,7 @@ export async function GET(){
   liveBattles,
   pendingBattleEarningsCount:pendingEarnings._count,
   pendingBattleEarningsCents:pendingEarnings._sum.amountCents??0,
+  pendingRewards,
   reserves:Object.fromEntries(reserves.map(row=>[row.kind,row._sum.amount??0])),
   recentAwards
  });
