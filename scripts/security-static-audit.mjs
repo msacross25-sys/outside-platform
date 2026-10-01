@@ -20,7 +20,8 @@ const authMarkers=[
  "ownerAccess(",
  "mainOwner(",
  "currentAuth(",
- "financeStaff("
+ "financeStaff(",
+ "authorizedClipWorker("
 ];
 
 const signedWebhookMarkers=[
