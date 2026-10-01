@@ -2,6 +2,7 @@ import {NextResponse} from "next/server";
 import {db} from "@/lib/db";
 import {currentUser} from "@/lib/session";
 import {syncAchievements} from "@/lib/syncAchievements";
+import {createNotification} from "@/lib/notifications";
 import {
  deleteLivekitRoom,
  ensureLivekitRoom,
@@ -220,12 +221,11 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
      downloadUrl:mediaUrl+"?download=1"
     }
    });
-   await db.notification.create({
-    data:{
-     recipientId:me.id,
-     actorId:me.id,
-     type:"REPLAY_READY"
-    }
+   await createNotification({
+    recipientId:me.id,
+    actorId:me.id,
+    type:"REPLAY_READY",
+    targetUrl:"/porch/"+room.slug
    });
   }
 
