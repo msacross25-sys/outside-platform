@@ -276,6 +276,9 @@ model User {
   hostedBattleTournaments BattleTournament[]
   battleGuildMemberships BattleGuildMember[]
   ownedBattleGuilds BattleGuild[]
+  referralCode ReferralCode? @relation("referralCodeOwner")
+  referredBy ReferralAttribution? @relation("referredUser")
+  referrals ReferralAttribution[] @relation("referrerUser")
   staffProfile StaffProfile?
   moderationActions ModerationActionLog[] @relation("moderationActor")
   auditEvents AuditLog[] @relation("auditActor")
@@ -1115,6 +1118,24 @@ model MonthlyHostRank {
   @@index([month,rank])
 }
 
+
+model ReferralCode {
+  id String @id @default(cuid())
+  ownerId String @unique
+  code String @unique
+  createdAt DateTime @default(now())
+  owner User @relation("referralCodeOwner", fields:[ownerId], references:[id], onDelete:Cascade)
+  @@index([code])
+}
+
+model ReferralAttribution {
+  referredUserId String @id
+  referrerId String
+  createdAt DateTime @default(now())
+  referredUser User @relation("referredUser", fields:[referredUserId], references:[id], onDelete:Cascade)
+  referrer User @relation("referrerUser", fields:[referrerId], references:[id], onDelete:Cascade)
+  @@index([referrerId,createdAt])
+}
 
 model BattleGuild {
   id String @id @default(cuid())
