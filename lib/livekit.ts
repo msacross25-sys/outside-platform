@@ -29,7 +29,7 @@ function clientUrl(){
  return value;
 }
 
-function apiUrl(){
+export function livekitApiUrl(){
  const value=clientUrl();
  const url=new URL(value);
  if(url.protocol==="wss:")url.protocol="https:";
@@ -37,7 +37,7 @@ function apiUrl(){
  return url.toString().replace(/\/$/,"");
 }
 
-function credentials(){
+export function livekitCredentials(){
  const apiKey=process.env.LIVEKIT_API_KEY;
  const apiSecret=process.env.LIVEKIT_API_SECRET;
  if(!apiKey||!apiSecret)throw new Error("LiveKit server credentials are not configured.");
@@ -45,8 +45,8 @@ function credentials(){
 }
 
 function service(){
- const {apiKey,apiSecret}=credentials();
- return new RoomServiceClient(apiUrl(),apiKey,apiSecret);
+ const {apiKey,apiSecret}=livekitCredentials();
+ return new RoomServiceClient(livekitApiUrl(),apiKey,apiSecret);
 }
 
 export async function issueLivekitToken(args:TokenArgs){
@@ -64,7 +64,7 @@ export async function issueLivekitToken(args:TokenArgs){
 
  if(!livekitEnabled())throw new Error("LiveKit is not configured.");
 
- const {apiKey,apiSecret}=credentials();
+ const {apiKey,apiSecret}=livekitCredentials();
  const roomName=livekitRoomName(args.roomId);
  const token=new AccessToken(apiKey,apiSecret,{
   identity:args.userId,
