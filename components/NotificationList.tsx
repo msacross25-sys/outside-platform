@@ -1,4 +1,55 @@
 "use client";
-import { useEffect,useState } from "react";
+import {useEffect,useState} from "react";
 import Link from "next/link";
-export function NotificationList(){const [items,setItems]=useState<any[]|null>(null);useEffect(()=>{fetch("/api/notifications").then(async r=>{if(r.status===401){location.href="/login";return null}return r.json()}).then(d=>d&&setItems(d.notifications))},[]);async function markRead(){await fetch("/api/notifications",{method:"PATCH"});setItems(x=>x?.map(n=>({...n,readAt:n.readAt||new Date().toISOString()}))??[])}if(!items)return <p>Loading activity…</p>;return <div><div className="notificationTop"><h2>Activity</h2><button onClick={markRead}>Mark all read</button></div>{items.length===0?<p>No activity yet.</p>:items.map(n=><Link className={"notification "+(!n.readAt?"unread":"")} key={n.id} href={n.postId?"/post/"+n.postId:"/u/"+n.actor.username}><b>{n.actor.displayName}</b> {n.type==="FOLLOW"?"followed you":n.type==="LIKE"?"liked your post":n.type==="COMMENT"?"commented on your post":n.type==="LIVE_STARTED"?"is LIVE now":n.type==="GIFT_RECEIVED"?"sent you a gift":n.type==="FOLLOWER_MILESTONE"?"helped you reach a follower milestone":n.type==="REPLAY_READY"?"your Live replay is ready":n.type==="CREATOR_LEVEL"?"you unlocked a new Creator level":n.type==="BADGE_UNLOCKED"?"you unlocked an achievement":"has new activity"}.</Link>)}</div>}
+
+function copy(type:string){
+ return type==="FOLLOW"?"followed you":
+  type==="LIKE"?"liked your post":
+  type==="COMMENT"?"commented on your post":
+  type==="MESSAGE"?"sent you a message":
+  type==="LIVE_STARTED"?"is LIVE now":
+  type==="GIFT_RECEIVED"?"sent you a gift":
+  type==="FOLLOWER_MILESTONE"?"helped you reach a follower milestone":
+  type==="REPLAY_READY"?"your Live replay is ready":
+  type==="CREATOR_LEVEL"?"you unlocked a new Creator level":
+  type==="BADGE_UNLOCKED"?"you unlocked an achievement":
+  "has new activity";
+}
+
+export function NotificationList(){
+ const [items,setItems]=useState<any[]|null>(null);
+
+ useEffect(()=>{
+  fetch("/api/notifications").then(async response=>{
+   if(response.status===401){
+    location.href="/login";
+    return null;
+   }
+   return response.json();
+  }).then(data=>data&&setItems(data.notifications));
+ },[]);
+
+ async function markRead(){
+  await fetch("/api/notifications",{method:"PATCH"});
+  setItems(current=>current?.map(item=>({
+   ...item,
+   readAt:item.readAt||new Date().toISOString()
+  }))??[]);
+ }
+
+ if(!items)return <p>Loading activity…</p>;
+
+ return <div>
+  <div className="notificationTop">
+   <h2>Activity</h2>
+   <button onClick={markRead}>Mark all read</button>
+  </div>
+  {items.length===0
+   ?<p>No activity yet.</p>
+   :items.map(item=><Link
+     className={"notification "+(!item.readAt?"unread":"")}
+     key={item.id}
+     href={item.targetUrl||(item.postId?"/post/"+item.postId:"/u/"+item.actor.username)}
+    ><b>{item.actor.displayName}</b> {copy(item.type)}.</Link>)}
+ </div>;
+}
