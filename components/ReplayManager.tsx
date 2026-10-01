@@ -6,7 +6,7 @@ export function ReplayManager({slug,host,status}:{slug:string;host:boolean;statu
  const [msg,setMsg]=useState("");
 
  async function load(){
-  const response=await fetch("/api/porch/"+slug+"/replay",{cache:"no-store"});
+  const response=await fetch(`/api/porch/${slug}/replay`,{cache:"no-store"});
   if(response.ok)setReplay((await response.json()).replay);
   else if(!host)setReplay(null);
  }
@@ -19,7 +19,7 @@ export function ReplayManager({slug,host,status}:{slug:string;host:boolean;statu
  },[status,slug]);
 
  async function patch(data:any){
-  const response=await fetch("/api/porch/"+slug+"/replay",{
+  const response=await fetch(`/api/porch/${slug}/replay`,{
    method:"PATCH",
    headers:{"content-type":"application/json"},
    body:JSON.stringify(data)
@@ -30,7 +30,7 @@ export function ReplayManager({slug,host,status}:{slug:string;host:boolean;statu
  async function clip(e:FormEvent<HTMLFormElement>){
   e.preventDefault();
   const form=new FormData(e.currentTarget);
-  const response=await fetch("/api/porch/"+slug+"/clips",{
+  const response=await fetch(`/api/porch/${slug}/clips`,{
    method:"POST",
    headers:{"content-type":"application/json"},
    body:JSON.stringify({
@@ -65,13 +65,30 @@ export function ReplayManager({slug,host,status}:{slug:string;host:boolean;statu
  return <section className="featureCard">
   <span className="eyebrow">Live Replay</span>
   <h2>{replay.status==="READY"?"Replay ready":"Replay processing"}</h2>
-  <p>{Math.floor(replay.durationSeconds/60)} min · {replay.totalViewers} viewers · peak {replay.peakViewers} · ❤️ {replay.reactionCount} · {replay.commentCount} comments</p>
-  {host&&<p>New followers {replay.followersGained} · Gifts {replay.giftCount} · Creator earnings ${(replay.creatorEarningsCents/100).toFixed(2)}</p>}
-  {replay.mediaUrl&&replay.status==="READY"&&<video controls src={replay.mediaUrl} style={{width:"100%",maxWidth:640,borderRadius:16}}/>}
+  <p>
+   {Math.floor(replay.durationSeconds/60)} min · {replay.totalViewers} viewers · peak {replay.peakViewers}
+   {" · "}❤️ {replay.reactionCount} · {replay.commentCount} comments
+  </p>
+
+  {host&&<p>
+   New followers {replay.followersGained} · Gifts {replay.giftCount} · Creator earnings ${(replay.creatorEarningsCents/100).toFixed(2)}
+  </p>}
+
+  {replay.mediaUrl&&replay.status==="READY"&&<video
+   controls
+   src={replay.mediaUrl}
+   style={{width:"100%",maxWidth:640,borderRadius:16}}
+  />}
+
   {host&&replay.status!=="DELETED"&&<>
-   <button onClick={()=>patch({visible:!replay.visible})}>{replay.visible?"Hide replay":"Make replay visible"}</button>
+   <button onClick={()=>patch({visible:!replay.visible})}>
+    {replay.visible?"Hide replay":"Make replay visible"}
+   </button>
+
    {replay.downloadUrl&&<a href={replay.downloadUrl}>Save replay</a>}
+
    <button onClick={()=>patch({status:"DELETED"})}>Delete replay</button>
+
    {replay.status==="READY"&&<form onSubmit={clip}>
     <input name="title" maxLength={100} placeholder="Clip title"/>
     <input name="start" type="number" min="0" placeholder="Start seconds" required/>
@@ -84,6 +101,7 @@ export function ReplayManager({slug,host,status}:{slug:string;host:boolean;statu
     <button>Create clip</button>
    </form>}
   </>}
+
   {msg&&<p>{msg}</p>}
  </section>;
 }
