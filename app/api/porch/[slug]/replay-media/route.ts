@@ -6,7 +6,7 @@ import {replayObjectKey} from "@/lib/liveRecording";
 
 export const dynamic="force-dynamic";
 
-export async function GET(_:Request,{params}:{params:Promise<{slug:string}>}){
+export async function GET(request:Request,{params}:{params:Promise<{slug:string}>}){
  const {slug}=await params;
  const me=await currentUser();
 
@@ -42,7 +42,11 @@ export async function GET(_:Request,{params}:{params:Promise<{slug:string}>}){
  }
 
  try{
-  const url=createSignedMediaDownload(replayObjectKey(room.id));
+  const download=new URL(request.url).searchParams.get("download")==="1";
+  const url=createSignedMediaDownload(
+   replayObjectKey(room.id),
+   download?{downloadName:"OUTSiiDE-"+slug+".mp4"}:undefined
+  );
   const response=NextResponse.redirect(url,307);
   response.headers.set("Cache-Control","private, no-store");
   return response;
