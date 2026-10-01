@@ -19,6 +19,7 @@ export default async function Profile({params}:{params:Promise<{username:string}
    badges:{orderBy:{unlockedAt:"desc"},take:8},
    hostApplication:true,
    battleProfile:true,
+   battleCosmeticSelection:true,
    viewingProgress:true,
    receivedGiftTransactions:{where:{status:"SETTLED"},select:{creatorShareCents:true}},
    porchMemberships:{where:{role:"HOST"},select:{roomId:true}},
@@ -87,19 +88,28 @@ export default async function Profile({params}:{params:Promise<{username:string}
   :user.battleProfile?.selectedTitle==="QUEEN_OF_BATTLES"
    ?"Queen of Battles"
    :null;
+ const cosmetics=user.battleCosmeticSelection;
+ const frameActive=Boolean(cosmetics?.frameKey);
+ const nameActive=Boolean(cosmetics?.nameEffectKey);
+ const entranceActive=Boolean(cosmetics?.entranceKey);
  const tabsUser={...user,posts:visiblePosts,liveReplays:visibleReplays};
 
  return <Shell>
   <section className="page profilePage">
-   <div className="profileHero">
-    <div className={live?"profileAvatarRing liveRing":"profileAvatarRing"}><div className="avatar">{user.displayName.slice(0,1).toUpperCase()}</div></div>
+   <div className={"profileHero"+(entranceActive?" battleEntranceActive":"")}>
+    <div className={(live?"profileAvatarRing liveRing":"profileAvatarRing")+(frameActive?" battleEquippedFrame":"")}><div className="avatar">{user.displayName.slice(0,1).toUpperCase()}</div></div>
     <div className="profileIdentity">
      <span className="eyebrow">@{user.username} {user.verified&&"✓"}</span>
-     <h1>{user.displayName}</h1>
+     <h1 className={nameActive?"battleEquippedName":undefined}>{user.displayName}</h1>
      <p className="lede">{user.bio||"Real people. Real moments."}</p>
      {user.hostApplication?.status==="APPROVED"&&<p>👑 Host</p>}
      {battleTitle&&<p>⚔️ {battleTitle}</p>}
      {user.battleProfile&&<p>{user.battleProfile.rankTitle} · {user.battleProfile.wins} wins · 🔥 {user.battleProfile.currentWinStreak} streak</p>}
+     {cosmetics&&(cosmetics.victoryKey||cosmetics.emojiKey||cosmetics.giftEffectKey)&&<div className="battleCosmeticChips">
+      {cosmetics.victoryKey&&<span>✨ Victory FX</span>}
+      {cosmetics.emojiKey&&<span>😎 Battle Emojis</span>}
+      {cosmetics.giftEffectKey&&<span>🎁 Gift FX</span>}
+     </div>}
      {live&&<a className="profileAction" href={"/porch/"+live.slug}>🔴 LIVE NOW · {live.title}</a>}
      {own?<a className="profileAction" href="/settings/profile">Edit Profile ✎</a>:<>
       <FollowButton username={user.username} initial={isFollowing} requested={requested}/>
