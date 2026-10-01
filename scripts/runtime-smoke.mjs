@@ -19,9 +19,9 @@ function expect(condition,message,detail){
  if(!condition)fail(message,detail);
 }
 
-async function request(path,{method="GET",body,cookie}={}){
- const headers={};
- if(body!==undefined)headers["content-type"]="application/json";
+async function request(path,{method="GET",body,cookie,headers:extraHeaders}={}){
+ const headers={...(extraHeaders??{})};
+ if(body!==undefined&&!headers["content-type"])headers["content-type"]="application/json";
  if(cookie)headers.cookie=cookie;
  const response=await fetch(base+path,{method,headers,body:body===undefined?undefined:JSON.stringify(body),redirect:"manual"});
  const raw=await response.text();
@@ -526,6 +526,34 @@ async function main(){
  const retriedClip=await db.clip.findUnique({where:{id:safetyClip.id}});
  expect(retriedClip?.mediaUrl==="/api/clips/"+safetyClip.id+"/media","Clip processing retry did not restore protected media URL",retriedClip);
 
+ const callbackClip=await db.clip.create({
+  data:{
+   creatorId:host.id,
+   roomId:roomCreate.data.room.id,
+   replayId:replay.id,
+   title:"Signed callback clip",
+   startSeconds:1,
+   endSeconds:2,
+   visibility:"PRIVATE"
+  }
+ });
+ const callbackPayload={clipId:callbackClip.id,status:"READY"};
+ const callbackRaw=JSON.stringify(callbackPayload);
+ const callbackSignature=createHmac("sha256",process.env.MEDIA_PROCESSING_SIGNING_SECRET)
+  .update(callbackRaw)
+  .digest("hex");
+ const signedCallback=await request("/api/webhooks/media/clip",{
+  method:"POST",
+  body:callbackPayload,
+  headers:{"x-outside-signature":"sha256="+callbackSignature}
+ });
+ expect(signedCallback.response.status===200&&signedCallback.data?.status==="READY","Signed clip processor callback did not finalize output",signedCallback.data);
+ const callbackClipReady=await db.clip.findUnique({where:{id:callbackClip.id}});
+ expect(callbackClipReady?.mediaUrl==="/api/clips/"+callbackClip.id+"/media","Signed callback did not set protected clip media URL",callbackClipReady);
+
+ const deleteCallbackClip=await request("/api/clips/"+callbackClip.id+"/manage",{method:"DELETE",cookie:hostCookie});
+ expect(deleteCallbackClip.response.status===200&&deleteCallbackClip.data?.deleted===true,"Creator could not delete callback clip",deleteCallbackClip.data);
+
  const clipVisible=await request("/api/clips/"+safetyClip.id,{cookie:charlieCookie});
  expect(clipVisible.response.status===200,"Public clip was not visible before block",clipVisible.data);
 
@@ -548,6 +576,15 @@ async function main(){
 
  const roomClipsBlocked=await request("/api/porch/"+slug+"/clips",{cookie:charlieCookie});
  expect(roomClipsBlocked.response.status===200&&!roomClipsBlocked.data?.clips?.some(x=>x.id===safetyClip.id),"Blocked creator clip remained in room listing",roomClipsBlocked.data);
+
+ const deleteProcessedClip=await request("/api/clips/"+safetyClip.id+"/manage",{method:"DELETE",cookie:hostCookie});
+ expect(deleteProcessedClip.response.status===200&&deleteProcessedClip.data?.deleted===true,"Creator could not delete processed clip",deleteProcessedClip.data);
+
+ const deletedClip=await request("/api/clips/"+safetyClip.id,{cookie:hostCookie});
+ expect(deletedClip.response.status===404,"Deleted clip metadata remained accessible",deletedClip.data);
+
+ const deletedClipMedia=await request("/api/clips/"+safetyClip.id+"/media",{cookie:hostCookie});
+ expect(deletedClipMedia.response.status===404,"Deleted clip media remained accessible",{status:deletedClipMedia.response.status,data:deletedClipMedia.data});
 
  const deleteReplay=await request("/api/porch/"+slug+"/replay",{method:"PATCH",cookie:hostCookie,body:{status:"DELETED"}});
  expect(deleteReplay.response.status===200&&deleteReplay.data?.replay?.status==="DELETED","Host could not delete replay",deleteReplay.data);
