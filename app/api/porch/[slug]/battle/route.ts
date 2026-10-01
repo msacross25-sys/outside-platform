@@ -3,6 +3,7 @@ import {db} from "@/lib/db";
 import {currentUser} from "@/lib/session";
 import {BATTLE_THEMES,MAX_BATTLE_TEAM_SIZE,validBattleDuration,validBattleMode} from "@/lib/battles";
 import {finalizeBattle} from "@/lib/battleEngine";
+import {nextTournamentMatch} from "@/lib/tournamentBracket";
 
 type ResultBattle={winnerSide:number|null;teams:{side:number;memberIds:string[]}[]};
 
@@ -80,6 +81,9 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
  if(mode==="TOURNAMENT"&&!tournamentId){
   return NextResponse.json({error:"Tournament matches require a tournament."},{status:400});
  }
+ if(mode==="TOURNAMENT"&&(left.length!==1||right.length!==1)){
+  return NextResponse.json({error:"Tournament bracket matches are 1 vs 1."},{status:400});
+ }
 
  const allowed=new Set(room.members.filter(x=>["HOST","COHOST","SPEAKER"].includes(x.role)).map(x=>x.userId));
  if([...left,...right].some(id=>!allowed.has(id))||new Set([...left,...right]).size!==left.length+right.length){
@@ -88,13 +92,22 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
 
  if(tournamentId){
   const tournament=await db.battleTournament.findUnique({where:{id:tournamentId},include:{entries:true}});
-  if(!tournament||!["REGISTRATION","LIVE"].includes(tournament.status)){
+  if(!tournament||tournament.status!=="LIVE"){
    return NextResponse.json({error:"Tournament is unavailable."},{status:409});
   }
-  const entrants=new Set(tournament.entries.filter(entry=>!entry.eliminated).map(entry=>entry.userId));
-  if([...left,...right].some(id=>!entrants.has(id))){
-   return NextResponse.json({error:"Tournament battle participants must be active tournament entrants."},{status:409});
+  if(tournament.ownerId!==me.id){
+   return NextResponse.json({error:"Only the tournament owner can launch bracket matches."},{status:403});
   }
+  if(mode!=="TOURNAMENT"){
+   return NextResponse.json({error:"Tournament matches must use Tournament Mode."},{status:400});
+  }
+
+  const next=await nextTournamentMatch(tournamentId);
+  if(!next)return NextResponse.json({error:"No tournament matchup is ready."},{status:409});
+  left=[next.leftId];
+  right=[next.rightId];
+  roundNumber=next.roundNumber;
+  matchNumber=next.matchNumber;
  }
 
  const battle=await db.$transaction(async tx=>{
