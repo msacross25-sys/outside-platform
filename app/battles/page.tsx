@@ -2,6 +2,7 @@ import Link from "next/link";
 import {Shell} from "@/components/Shell";
 import {BattleLeaderboards} from "@/components/BattleLeaderboards";
 import {FeaturedBattleWinners} from "@/components/FeaturedBattleWinners";
+import {BattleTopGifters} from "@/components/BattleTopGifters";
 
 export default function BattlesPage(){
  return <Shell><section className="page">
@@ -10,10 +11,10 @@ export default function BattlesPage(){
   <p className="lede">1 vs 1, team battles, tournaments, Last Minute Surge, streak rewards and seasonal competition.</p>
   <div className="heroButtons">
    <Link className="gradientButton" href="/host/room">Start a Battle Live</Link>
-   <Link className="ghostButton" href="/battles/tournaments">Tournament Mode</Link>
+   <Link className="ghostButton" href="/battles/tournaments">Tournament Mode</Link><Link className="ghostButton" href="/battles/rewards">Rewards</Link>
   </div>
   <FeaturedBattleWinners/>
-  <BattleLeaderboards/>
+  <BattleLeaderboards/><BattleTopGifters/>
   <div className="featureCard">
    <h2>Battle Ranks</h2>
    <p>Bronze · Silver · Gold · Platinum · Diamond · Legend · Immortal</p>
