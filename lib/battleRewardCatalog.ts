@@ -13,7 +13,8 @@ export const SAFE_WINNER_WHEEL=[
  {key:"PASS_XP_500",label:"500 Battle Pass XP",weight:1800,currency:"BATTLE_PASS_XP",amount:500},
  {key:"BONUS_COINS_130",label:"130 Bonus Coins",weight:1200,currency:"BONUS_COIN",amount:130},
  {key:"VICTORY_FRAME",label:"Victory Profile Frame",weight:700,currency:"COSMETIC_VICTORY_FRAME",amount:1},
- {key:"DOUBLE_POINT_CARD",label:"Double-Point Battle Card",weight:300,currency:"CARD_DOUBLE_POINT",amount:1}
+ {key:"DOUBLE_POINT_CARD",label:"Double-Point Battle Card",weight:220,currency:"CARD_DOUBLE_POINT",amount:1},
+ {key:"SHIELD_CARD",label:"Win-Streak Shield Card",weight:80,currency:"CARD_SHIELD",amount:1}
 ] as const;
 
 export function battlePassLevel(freeXp:number){
