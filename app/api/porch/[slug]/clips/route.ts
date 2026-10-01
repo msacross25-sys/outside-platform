@@ -2,6 +2,7 @@ import {NextResponse} from "next/server";
 import {db} from "@/lib/db";
 import {currentUser} from "@/lib/session";
 import {filterViewableClips} from "@/lib/clipAccess";
+import {clipMediaPath,clipProcessingReady,queueClipProcessing} from "@/lib/clipProcessing";
 
 export async function POST(request:Request,{params}:{params:Promise<{slug:string}>}){
  const {slug}=await params;
@@ -38,7 +39,7 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
   ?body.visibility
   :"PUBLIC";
 
- const clip=await db.clip.create({
+ let clip=await db.clip.create({
   data:{
    creatorId:me.id,
    roomId:room.id,
@@ -50,7 +51,42 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
   }
  });
 
- return NextResponse.json({clip,processingRequired:true},{status:201});
+ let processingQueued=false;
+ let processingReady=false;
+ let processingError:string|null=null;
+
+ if(clipProcessingReady()){
+  try{
+   const queued=await queueClipProcessing({
+    clipId:clip.id,
+    roomId:clip.roomId,
+    startSeconds:clip.startSeconds,
+    endSeconds:clip.endSeconds
+   });
+   processingQueued=queued.queued;
+   processingReady=queued.ready;
+
+   if(queued.ready){
+    clip=await db.clip.update({
+     where:{id:clip.id},
+     data:{mediaUrl:clipMediaPath(clip.id)}
+    });
+   }
+  }catch(error){
+   console.error("Initial clip processing queue failed",error);
+   processingError="Clip saved, but processing could not be queued. Retry from the clip controls.";
+  }
+ }else{
+  processingError="Clip saved, but media processing is not configured.";
+ }
+
+ return NextResponse.json({
+  clip,
+  processingRequired:!processingReady,
+  processingQueued,
+  processingReady,
+  processingError
+ },{status:201});
 }
 
 export async function GET(_:Request,{params}:{params:Promise<{slug:string}>}){
