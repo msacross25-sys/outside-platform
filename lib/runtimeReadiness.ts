@@ -3,6 +3,7 @@ import {mediaStorageReady} from "@/lib/mediaStorage";
 import {livekitEnabled,liveMediaProvider} from "@/lib/livekit";
 import {liveRecordingMode,liveRecordingReady,liveRecordingTestMode} from "@/lib/liveRecording";
 import {redisHealth} from "@/lib/redis";
+import {stripePaymentsReady,stripeTestMode} from "@/lib/stripe";
 
 export type ReadinessCheck={
  ok:boolean;
@@ -21,6 +22,7 @@ export type RuntimeReadiness={
   liveTransport:ReadinessCheck;
   liveRecording:ReadinessCheck;
   scaleCache:ReadinessCheck;
+  payments:ReadinessCheck;
   appUrl:ReadinessCheck;
  };
 };
@@ -103,6 +105,13 @@ function liveRecordingCheck(strict:boolean):ReadinessCheck{
  return {ok:true};
 }
 
+function paymentsCheck(strict:boolean):ReadinessCheck{
+ if(!strict&&stripeTestMode())return {ok:true};
+ return stripePaymentsReady()
+  ?{ok:true}
+  :{ok:false,message:"Stripe checkout/webhook configuration is incomplete."};
+}
+
 async function scaleCacheCheck():Promise<ReadinessCheck>{
  return await redisHealth()?{ok:true}:{ok:false,message:"Redis scale cache is unavailable."};
 }
@@ -147,6 +156,7 @@ export async function runtimeReadiness():Promise<RuntimeReadiness>{
   liveTransport:liveTransportCheck(strict),
   liveRecording:liveRecordingCheck(strict),
   scaleCache,
+  payments:paymentsCheck(strict),
   appUrl:appUrlCheck(strict)
  };
 
