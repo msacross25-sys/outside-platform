@@ -23,7 +23,7 @@ export async function getReplayAccess(slug:string,viewerId?:string|null){
   return {room,replay,hostId,owner:true};
  }
 
- if(replay.status!=="READY"||!replay.visible||replay.status==="DELETED")return null;
+ if(replay.status!=="READY"||!replay.visible)return null;
 
  if(!viewerId){
   return room.visibility==="PUBLIC"?{room,replay,hostId,owner:false}:null;
