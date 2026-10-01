@@ -2,6 +2,7 @@ import {NextResponse} from "next/server";
 import {db} from "@/lib/db";
 import {currentUser} from "@/lib/session";
 import {getLiveMemberAccess} from "@/lib/porchAccess";
+import {syncLivekitParticipantRole} from "@/lib/livekit";
 
 export async function GET(_:Request,{params}:{params:Promise<{slug:string}>}){
  const {slug}=await params;const me=await currentUser();
@@ -39,6 +40,11 @@ export async function PATCH(request:Request,{params}:{params:Promise<{slug:strin
    db.porchMember.update({where:{roomId_userId:{roomId:access.room.id,userId}},data:{role:"LISTENER"}}),
    db.porchStageRequest.updateMany({where:{roomId:access.room.id,userId},data:{status:"DECLINED",reviewedAt:new Date()}})
   ]);
+  try{
+   await syncLivekitParticipantRole(access.room.id,userId,"LISTENER");
+  }catch(error){
+   console.error("LiveKit listener permission sync failed",error);
+  }
   return NextResponse.json({role:"LISTENER"});
  }
  if(!["APPROVE","INVITE","DECLINE"].includes(action))return NextResponse.json({error:"Invalid stage action."},{status:400});
@@ -58,5 +64,10 @@ export async function PATCH(request:Request,{params}:{params:Promise<{slug:strin
   return true;
  },{isolationLevel:"Serializable"});
  if(!claimed)return NextResponse.json({error:"Stage is full."},{status:409});
+ try{
+  await syncLivekitParticipantRole(access.room.id,userId,"SPEAKER");
+ }catch(error){
+  console.error("LiveKit speaker permission sync failed",error);
+ }
  return NextResponse.json({role:"SPEAKER"});
 }
