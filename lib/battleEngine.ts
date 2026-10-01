@@ -150,6 +150,11 @@ export async function finalizeBattle(battleId:string,endedAt=new Date()){
       create:{userId,key:"FIRST_BATTLE_WIN",name:"First Win",icon:"🏆",featured:false},
       update:{}
      });
+     await tx.hostCosmetic.upsert({
+      where:{userId_effectKey:{userId,effectKey:"battle-victory-animation"}},
+      create:{userId,effectKey:"battle-victory-animation",source:"FIRST_BATTLE_WIN"},
+      update:{source:"FIRST_BATTLE_WIN"}
+     });
     }
     if(projectedLifetimePoints>=1_000_000){
      await tx.userBadge.upsert({
