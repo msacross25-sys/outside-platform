@@ -2,7 +2,7 @@ import {timingSafeEqual} from "node:crypto";
 import {NextResponse} from "next/server";
 import {runBattleRollups} from "@/lib/battleRollups";
 
-function authorized(request:Request){
+function authorizedBattleRollup(request:Request){
  const expected=process.env.BATTLE_CRON_SECRET??"";
  if(expected.length<32)return false;
  const header=request.headers.get("authorization")??"";
@@ -14,7 +14,7 @@ function authorized(request:Request){
 }
 
 export async function POST(request:Request){
- if(!authorized(request))return NextResponse.json({error:"Unauthorized."},{status:401});
+ if(!authorizedBattleRollup(request))return NextResponse.json({error:"Unauthorized."},{status:401});
  const result=await runBattleRollups(new Date());
  return NextResponse.json({ok:true,result});
 }
