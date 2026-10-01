@@ -162,6 +162,21 @@ export function createSignedMediaUpload(spec:UploadSpec):SignedUpload{
  };
 }
 
+export function createSignedObjectUpload(key:string,contentType:string,expiresInSeconds=900):SignedUpload{
+ if(mode()==="test"&&process.env.ALLOW_TEST_MEDIA_STORAGE==="true"){
+  return {
+   uploadUrl:"/api/media/test-upload",
+   headers:{"content-type":contentType},
+   expiresInSeconds
+  };
+ }
+ return {
+  uploadUrl:presign("PUT",key,expiresInSeconds,contentType),
+  headers:{"content-type":contentType},
+  expiresInSeconds
+ };
+}
+
 export function createSignedMediaDownload(key:string,options?:{downloadName?:string}){
  if(mode()==="test"&&process.env.ALLOW_TEST_MEDIA_STORAGE==="true"){
   return "https://media.example.test/test-object";
@@ -232,6 +247,28 @@ export async function verifyStoredMedia(spec:UploadSpec){
  }
 
  return {size:actualSize,contentType:actualType||spec.contentType};
+}
+
+export async function inspectStoredObject(key:string){
+ if(mode()==="test"&&process.env.ALLOW_TEST_MEDIA_STORAGE==="true"){
+  return {exists:true,size:4,contentType:"video/mp4"};
+ }
+
+ const signed=signedRequest("HEAD",key);
+ const response=await fetch(signed.url,{
+  method:"HEAD",
+  headers:signed.headers,
+  cache:"no-store"
+ });
+
+ if(response.status===404)return {exists:false,size:0,contentType:""};
+ if(!response.ok)throw new Error("Stored media object could not be inspected.");
+
+ return {
+  exists:true,
+  size:Number(response.headers.get("content-length")||"0"),
+  contentType:(response.headers.get("content-type")||"").split(";")[0].trim().toLowerCase()
+ };
 }
 
 export async function deleteStoredMedia(key:string){

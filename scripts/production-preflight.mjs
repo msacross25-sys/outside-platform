@@ -14,6 +14,7 @@ const required=[
  "LIVEKIT_URL",
  "LIVEKIT_API_KEY",
  "LIVEKIT_API_SECRET",
+ "CLIP_WORKER_SECRET",
  "REDIS_URL",
  "STRIPE_SECRET_KEY",
  "STRIPE_WEBHOOK_SECRET"
@@ -41,6 +42,10 @@ if((process.env.AUTH_SECRET??"").length<32){
 const mediaSecret=process.env.MEDIA_SIGNING_SECRET??"";
 if(mediaSecret.length<32){
  errors.push("MEDIA_SIGNING_SECRET must be at least 32 characters.");
+}
+
+if((process.env.CLIP_WORKER_SECRET??"").length<32){
+ errors.push("CLIP_WORKER_SECRET must be at least 32 characters.");
 }
 
 const mfa=process.env.MFA_ENCRYPTION_KEY??"";

@@ -110,6 +110,13 @@ enum ClipVisibility {
   PRIVATE
 }
 
+enum ClipProcessingStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+}
+
 enum PorchStageRequestStatus {
   PENDING
   INVITED
@@ -612,6 +619,10 @@ model Clip {
   replayId String?
   title String?
   mediaUrl String?
+  processingStatus ClipProcessingStatus @default(PENDING)
+  processingError String?
+  processingStartedAt DateTime?
+  readyAt DateTime?
   startSeconds Int
   endSeconds Int
   featured Boolean @default(false)
@@ -625,6 +636,7 @@ model Clip {
   likes ClipLike[]
   comments ClipComment[]
   @@index([roomId, createdAt])
+  @@index([processingStatus, createdAt])
 }
 
 model ClipLike {
