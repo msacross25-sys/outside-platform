@@ -1141,7 +1141,7 @@ model BattleGuildMember {
   guild BattleGuild @relation(fields:[guildId], references:[id], onDelete:Cascade)
   user User @relation(fields:[userId], references:[id], onDelete:Cascade)
   @@id([guildId,userId])
-  @@index([userId])
+  @@unique([userId])
 }
 
 model BattleTerritory {
