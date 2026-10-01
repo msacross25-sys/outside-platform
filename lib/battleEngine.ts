@@ -251,17 +251,12 @@ export async function finalizeBattle(battleId:string,endedAt=new Date()){
    }else{
     const tournament=await tx.battleTournament.findUnique({
      where:{id:battle.tournamentId},
-     select:{currentRound:true}
+     select:{currentRound:true,_count:{select:{entries:true}}}
     });
-    const unfinished=await tx.battle.count({
-     where:{
-      id:{not:battle.id},
-      tournamentId:battle.tournamentId,
-      roundNumber:tournament?.currentRound??battle.roundNumber,
-      status:{in:["SCHEDULED","LIVE"]}
-     }
-    });
-    if(unfinished===0){
+    const currentRound=tournament?.currentRound??battle.roundNumber??1;
+    const totalEntries=tournament?._count.entries??remaining.length;
+    const expectedRemaining=Math.max(1,Math.ceil(totalEntries/Math.pow(2,currentRound)));
+    if(remaining.length<=expectedRemaining){
      await tx.battleTournament.update({
       where:{id:battle.tournamentId},
       data:{currentRound:{increment:1}}
