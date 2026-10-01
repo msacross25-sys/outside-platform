@@ -72,7 +72,10 @@ export function BattleRewardCenter(){
    <span>Current streak <b>{profile?.currentWinStreak??0}</b></span>
    <span>Best streak <b>{profile?.bestWinStreak??0}</b></span>
    <span>Battle Pass <b>Lv. {pass?.level??1}</b></span>
+   <span>VIP <b>{profile?.vipActive?"ACTIVE":"—"}</b></span>
   </div>
+
+  {profile?.vipActive&&<div className="featureCard"><h3>💫 Battle VIP Active</h3><p>Your 25-win streak unlocked VIP through {new Date(profile.vipUntil).toLocaleDateString()}.</p></div>}
 
   <div className="featureCard">
    <h3>Winner’s Wheel</h3>
