@@ -22,7 +22,7 @@ export function BattleCenter({slug,members,host,status,meId}:{slug:string;member
  const [surgeStartsAt,setSurgeStartsAt]=useState<string|null>(null);
  const [now,setNow]=useState(Date.now());
  const [mode,setMode]=useState("ONE_V_ONE");
- const [theme,setTheme]=useState(BATTLE_THEMES[0].key);
+ const [theme,setTheme]=useState<string>(BATTLE_THEMES[0].key);
  const [duration,setDuration]=useState<number>(5);
  const [left,setLeft]=useState<string[]>([]);
  const [right,setRight]=useState<string[]>([]);
