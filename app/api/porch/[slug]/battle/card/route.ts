@@ -1,10 +1,11 @@
 import {NextResponse} from "next/server";
+import type {Prisma} from "@prisma/client";
 import {db} from "@/lib/db";
 import {currentUser} from "@/lib/session";
 
 const DOUBLE_POINT_SECONDS=60;
 
-async function consumeCard(tx:any,userId:string,currency:string){
+async function consumeCard(tx:Prisma.TransactionClient,userId:string,currency:string){
  const inventory=await tx.battleRewardLedger.findFirst({
   where:{userId,currency,status:"AVAILABLE",amount:{gt:0}},
   orderBy:{createdAt:"asc"}
