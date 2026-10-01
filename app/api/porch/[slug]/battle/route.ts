@@ -4,6 +4,18 @@ import {currentUser} from "@/lib/session";
 import {BATTLE_THEMES,MAX_BATTLE_TEAM_SIZE,validBattleDuration,validBattleMode} from "@/lib/battles";
 import {finalizeBattle} from "@/lib/battleEngine";
 
+type ResultBattle={winnerSide:number|null;teams:{side:number;memberIds:string[]}[]};
+
+async function winnerEffectsFor(battle:ResultBattle|null){
+ if(!battle?.winnerSide)return [];
+ const winnerIds=battle.teams.find(team=>team.side===battle.winnerSide)?.memberIds??[];
+ if(!winnerIds.length)return [];
+ return db.battleCosmeticSelection.findMany({
+  where:{userId:{in:winnerIds},victoryKey:{not:null}},
+  select:{userId:true,victoryKey:true}
+ });
+}
+
 export async function POST(request:Request,{params}:{params:Promise<{slug:string}>}){
  const {slug}=await params;
  const me=await currentUser();
@@ -164,13 +176,15 @@ export async function GET(_:Request,{params}:{params:Promise<{slug:string}>}){
      where:{battleId:recent.id,kind:"REMATCH_REQUEST",currency:"CARD_REMATCH",status:"AVAILABLE"}
     })
    :0;
-  return NextResponse.json({battle:null,recent,rematchRequests});
+  const winnerEffects=await winnerEffectsFor(recent);
+  return NextResponse.json({battle:null,recent,rematchRequests,winnerEffects});
  }
 
  const deadline=(battle.startedAt?.getTime()??0)+battle.durationMinutes*60000;
  if(deadline&&Date.now()>=deadline){
   const ended=await finalizeBattle(battle.id,new Date(deadline));
-  return NextResponse.json({battle:ended,expired:true});
+  const winnerEffects=await winnerEffectsFor(ended);
+  return NextResponse.json({battle:ended,expired:true,winnerEffects});
  }
 
  return NextResponse.json({
