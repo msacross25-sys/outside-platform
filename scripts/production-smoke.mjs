@@ -55,6 +55,10 @@ expect(headers.get("x-content-type-options")==="nosniff","X-Content-Type-Options
 expect(headers.get("referrer-policy")==="strict-origin-when-cross-origin","Referrer-Policy missing or incorrect",headers.get("referrer-policy"));
 expect((headers.get("permissions-policy")??"").includes("camera=(self)"),"Permissions-Policy missing expected camera rule",headers.get("permissions-policy"));
 expect(!headers.get("x-powered-by"),"Framework disclosure header should be disabled",headers.get("x-powered-by"));
+const csp=headers.get("content-security-policy")??"";
+expect(csp.includes("frame-ancestors 'none'"),"Content-Security-Policy is missing frame isolation",csp);
+expect(csp.includes("object-src 'none'"),"Content-Security-Policy is missing object blocking",csp);
+expect(headers.get("cross-origin-opener-policy")==="same-origin","Cross-Origin-Opener-Policy missing or incorrect",headers.get("cross-origin-opener-policy"));
 
 if(base.protocol==="https:"){
  expect((headers.get("strict-transport-security")??"").includes("max-age=31536000"),"HSTS missing or too weak",headers.get("strict-transport-security"));
