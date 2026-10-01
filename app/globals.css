@@ -51,3 +51,13 @@ body{background:radial-gradient(circle at 78% 8%,#132a78 0,transparent 28%),radi
 .walletGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:22px}.walletCard{padding:22px;border:1px solid var(--line);border-radius:22px;background:linear-gradient(145deg,#111a31,#080e1c)}.walletCard h2{font-size:2rem;margin:8px 0}.walletStats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:16px 0}.walletStats>div{padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--panel)}.walletStats small,.walletStats b{display:block}.walletStats small{color:var(--muted);margin-bottom:5px}
 
 .createRoomForm{display:grid;gap:14px;max-width:680px;margin-top:22px}.createRoomForm label{display:grid;gap:7px;font-weight:700}.createRoomForm input,.createRoomForm textarea,.createRoomForm select{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:inherit}.createRoomForm textarea{min-height:110px;resize:vertical}.screenShareNotice{display:grid;gap:4px;margin:14px 0;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+
+
+@keyframes battleFramePulse{0%,100%{filter:drop-shadow(0 0 8px #ff2aa688)}50%{filter:drop-shadow(0 0 20px #12c8ffcc)}}
+@keyframes battleNameFlow{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+@keyframes battleEntrancePop{0%{opacity:0;transform:translateY(14px) scale(.98)}100%{opacity:1;transform:translateY(0) scale(1)}}
+.battleEquippedFrame{background:conic-gradient(from 90deg,var(--pink),var(--purple),var(--cyan),var(--pink));animation:battleFramePulse 2.2s ease-in-out infinite}
+.battleEquippedName{background:linear-gradient(90deg,var(--pink),var(--purple),var(--cyan),var(--pink));background-size:200% auto;-webkit-background-clip:text;background-clip:text;color:transparent;animation:battleNameFlow 4s linear infinite}
+.battleEntranceActive{animation:battleEntrancePop .55s ease-out both}
+.battleCosmeticChips{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0}
+.battleCosmeticChips span{padding:6px 9px;border:1px solid var(--line);border-radius:999px;background:var(--panel2);font-size:12px;color:var(--muted)}
