@@ -69,8 +69,10 @@ export function TournamentCenter(){
     <Link href={"/battles/tournaments/"+t.id}><b>{t.name}</b></Link>
     <span>{t.status} · {t._count.entries}/{t.bracketSize} entrants · Round {t.currentRound}</span>
     <p>Host: @{t.owner.username}</p>
-    {t.status==="REGISTRATION"&&<button type="button" onClick={()=>join(t.id)}>Enter Tournament</button>}
-    {t.status==="REGISTRATION"&&<button type="button" onClick={()=>start(t.id)}>Start Tournament</button>}
+    {t.status==="REGISTRATION"&&!t.joined&&t._count.entries<t.bracketSize&&<button type="button" onClick={()=>join(t.id)}>Enter Tournament</button>}
+    {t.status==="REGISTRATION"&&t.joined&&!t.canManage&&<span>Entry confirmed</span>}
+    {t.status==="REGISTRATION"&&t.canManage&&t._count.entries===t.bracketSize&&<button type="button" onClick={()=>start(t.id)}>Start Full Bracket</button>}
+    {t.status==="REGISTRATION"&&t.canManage&&t._count.entries<t.bracketSize&&<span>Waiting for {t.bracketSize-t._count.entries} more entrant{t.bracketSize-t._count.entries===1?"":"s"}</span>}
    </article>)}
   </section>
   {message&&<p>{message}</p>}
