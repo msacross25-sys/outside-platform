@@ -22,6 +22,16 @@ type Data={
   createdAt:string;
   refundStatus:string|null;
  }[];
+ battleEarnings:{
+  id:string;
+  kind:string;
+  amountCents:number;
+  status:string;
+  createdAt:string;
+  settledAt:string|null;
+  battleId:string|null;
+  giftTransactionId:string|null;
+ }[];
  payouts:{
   id:string;
   amountCents:number;
@@ -46,7 +56,7 @@ export function WalletHistory(){
 
  if(!data)return null;
 
- const empty=data.purchases.length===0&&data.gifts.length===0&&data.payouts.length===0;
+ const empty=data.purchases.length===0&&data.gifts.length===0&&data.battleEarnings.length===0&&data.payouts.length===0;
 
  return <section className="walletCard">
   <span className="eyebrow">History</span>
@@ -64,6 +74,12 @@ export function WalletHistory(){
 
      {data.gifts.map(x=><p key={x.id}>
       <b>{x.giftName}</b> · {money(x.creatorShareCents)}
+      {" · "}{x.status.toLowerCase()}
+      {" · "}{new Date(x.createdAt).toLocaleDateString()}
+     </p>)}
+
+     {data.battleEarnings.map(x=><p key={x.id}>
+      <b>{x.kind.replaceAll("_"," ")}</b> · {money(x.amountCents)}
       {" · "}{x.status.toLowerCase()}
       {" · "}{new Date(x.createdAt).toLocaleDateString()}
      </p>)}
