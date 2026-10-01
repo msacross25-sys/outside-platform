@@ -1,0 +1,30 @@
+name: Battle reward rollups
+
+on:
+  schedule:
+    - cron: "15 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rollup:
+    runs-on: ubuntu-latest
+    env:
+      OUTSIDE_PRODUCTION_URL: ${{ vars.OUTSIDE_PRODUCTION_URL }}
+      BATTLE_CRON_SECRET: ${{ secrets.BATTLE_CRON_SECRET }}
+    steps:
+      - name: Run battle rollups
+        shell: bash
+        run: |
+          if [ -z "$OUTSIDE_PRODUCTION_URL" ] || [ -z "$BATTLE_CRON_SECRET" ]; then
+            echo "Battle rollup scheduler is not configured yet; skipping."
+            exit 0
+          fi
+
+          base="${OUTSIDE_PRODUCTION_URL%/}"
+          curl --fail --silent --show-error \
+            --request POST \
+            --header "Authorization: Bearer $BATTLE_CRON_SECRET" \
+            "$base/api/internal/battle-rollup"
