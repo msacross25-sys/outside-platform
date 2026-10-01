@@ -1,9 +1,24 @@
 import {NextResponse} from "next/server";
 import {currentUser} from "@/lib/session";
+import {db} from "@/lib/db";
 import {getLiveMemberAccess,getPorchAccess} from "@/lib/porchAccess";
 import {checkActionLimit} from "@/lib/actionLimit";
 import {incrementLiveReactionCount,readLiveReactionCount} from "@/lib/liveScale";
 import {broadcastLivekitData} from "@/lib/livekit";
+
+const STANDARD_REACTIONS=["❤️","🔥","😂","👏","💜"] as const;
+const BATTLE_EMOJI_REACTIONS=["⚡","👑","💎","🚀","🏆","🛡️"] as const;
+
+async function reactionOptions(userId?:string){
+ if(!userId)return [...STANDARD_REACTIONS];
+ const selection=await db.battleCosmeticSelection.findUnique({
+  where:{userId},
+  select:{emojiKey:true}
+ });
+ return selection?.emojiKey
+  ?[...STANDARD_REACTIONS,...BATTLE_EMOJI_REACTIONS]
+  :[...STANDARD_REACTIONS];
+}
 
 export async function POST(request:Request,{params}:{params:Promise<{slug:string}>}){
  const {slug}=await params;
@@ -23,12 +38,15 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
 
  const body=await request.json().catch(()=>null);
  const emoji=String(body?.emoji??"❤️").slice(0,8);
- if(!emoji)return NextResponse.json({error:"Reaction required."},{status:400});
+ const allowed=await reactionOptions(me.id);
+ if(!allowed.includes(emoji as (typeof allowed)[number])){
+  return NextResponse.json({error:"That Live reaction is not unlocked."},{status:403});
+ }
 
  const count=await incrementLiveReactionCount(access.room.id);
  if(count===null)return NextResponse.json({error:"Reactions are temporarily unavailable."},{status:503});
  try{await broadcastLivekitData(access.room.id,"outside.reaction",{count,emoji})}catch(error){console.error("Live reaction broadcast failed",error)}
- return NextResponse.json({ok:true,count});
+ return NextResponse.json({ok:true,count,emoji});
 }
 
 export async function GET(_:Request,{params}:{params:Promise<{slug:string}>}){
@@ -37,6 +55,9 @@ export async function GET(_:Request,{params}:{params:Promise<{slug:string}>}){
  const access=await getPorchAccess(slug,me?.id);
  if(!access.room||!access.allowed)return NextResponse.json({error:"Room not found."},{status:404});
 
- const live=await readLiveReactionCount(access.room.id);
- return NextResponse.json({count:live??access.room.reactionCount});
+ const [live,options]=await Promise.all([
+  readLiveReactionCount(access.room.id),
+  reactionOptions(me?.id)
+ ]);
+ return NextResponse.json({count:live??access.room.reactionCount,reactionOptions:options});
 }
