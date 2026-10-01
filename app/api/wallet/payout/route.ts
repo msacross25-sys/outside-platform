@@ -21,7 +21,7 @@ export async function POST(){
 
  const exception=await db.giftTransaction.count({
   where:{
-   recipientId:me.id,
+   OR:[{recipientId:me.id},{battleId:{not:null}}],
    status:{in:["CHARGEBACK","ADJUSTED"]},
    createdAt:{gte:new Date(Date.now()-30*86400000)}
   }
@@ -30,16 +30,23 @@ export async function POST(){
   return NextResponse.json({error:"Payout review required because recent financial exceptions exist."},{status:409});
  }
 
- const settled=await db.giftTransaction.aggregate({
-  where:{recipientId:me.id,status:"SETTLED"},
-  _sum:{creatorShareCents:true}
- });
- const reserved=await db.creatorPayout.aggregate({
-  where:{creatorId:me.id,status:{in:["PENDING","PROCESSING","PAID"]}},
-  _sum:{amountCents:true}
- });
+ const [settledGifts,settledBattles,reserved]=await Promise.all([
+  db.giftTransaction.aggregate({
+   where:{recipientId:me.id,battleId:null,status:"SETTLED"},
+   _sum:{creatorShareCents:true}
+  }),
+  db.battleEarning.aggregate({
+   where:{userId:me.id,status:"SETTLED"},
+   _sum:{amountCents:true}
+  }),
+  db.creatorPayout.aggregate({
+   where:{creatorId:me.id,status:{in:["PENDING","PROCESSING","PAID"]}},
+   _sum:{amountCents:true}
+  })
+ ]);
 
- const available=Math.max(0,(settled._sum.creatorShareCents??0)-(reserved._sum.amountCents??0));
+ const earned=(settledGifts._sum.creatorShareCents??0)+(settledBattles._sum.amountCents??0);
+ const available=Math.max(0,earned-(reserved._sum.amountCents??0));
  if(available<MINIMUM_PAYOUT_CENTS){
   return NextResponse.json({error:"Minimum payout not reached."},{status:409});
  }
