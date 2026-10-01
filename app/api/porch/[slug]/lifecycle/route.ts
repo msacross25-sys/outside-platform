@@ -14,6 +14,11 @@ import {
  startLiveRecording,
  stopLiveRecording
 } from "@/lib/liveRecording";
+import {
+ clearLiveReactionCount,
+ readLiveReactionCount,
+ resetLiveReactionCount
+} from "@/lib/liveScale";
 
 export async function POST(request:Request,{params}:{params:Promise<{slug:string}>}){
  const {slug}=await params;
@@ -85,6 +90,12 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
    });
   }
 
+  const reactionReady=await resetLiveReactionCount(room.id);
+  if(!reactionReady){
+   try{await deleteLivekitRoom(room.id)}catch{}
+   return NextResponse.json({error:"Live scale infrastructure is unavailable."},{status:503});
+  }
+
   const followerBaseline=await db.follow.count({where:{followingId:me.id}});
   const updated=await db.porchRoom.update({
    where:{id:room.id},
@@ -105,21 +116,6 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
    create:{userId:me.id,key:"FIRST_LIVE",name:"First Live",icon:"🎥"},
    update:{}
   });
-
-  const followers=await db.follow.findMany({
-   where:{followingId:me.id},
-   select:{followerId:true}
-  });
-  if(followers.length){
-   await db.notification.createMany({
-    data:followers.map(f=>({
-     recipientId:f.followerId,
-     actorId:me.id,
-     type:"LIVE_STARTED"
-    })),
-    skipDuplicates:false
-   });
-  }
 
   return NextResponse.json(updated);
  }
@@ -157,7 +153,7 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
    data:{endedAt:new Date()}
   });
 
-  const [followers,gifts,watch,comments]=await Promise.all([
+  const [followers,gifts,watch,comments,reactionTotalRaw]=await Promise.all([
    db.follow.count({where:{followingId:me.id}}),
    db.giftTransaction.aggregate({
     where:{roomId:room.id,status:"SETTLED"},
@@ -168,8 +164,14 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
     where:{roomId:room.id,eligible:true},
     _sum:{verifiedSeconds:true}
    }),
-   db.liveMessage.count({where:{roomId:room.id}})
+   db.liveMessage.count({where:{roomId:room.id}}),
+   readLiveReactionCount(room.id)
   ]);
+  const reactionTotal=reactionTotalRaw??room.reactionCount;
+  await db.porchRoom.update({
+   where:{id:room.id},
+   data:{reactionCount:reactionTotal}
+  });
 
   const durationSeconds=room.startedAt
    ?Math.max(0,Math.floor((Date.now()-room.startedAt.getTime())/1000))
@@ -186,7 +188,7 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
     peakViewers:room.peakViewers,
     verifiedWatchSeconds:watch._sum.verifiedSeconds??0,
     followersGained:Math.max(0,followers-room.followerBaseline),
-    reactionCount:room.reactionCount,
+    reactionCount:reactionTotal,
     commentCount:comments,
     giftCount:gifts._count,
     giftValueCents:gifts._sum.dollarValueCents??0,
@@ -199,7 +201,7 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
     peakViewers:room.peakViewers,
     verifiedWatchSeconds:watch._sum.verifiedSeconds??0,
     followersGained:Math.max(0,followers-room.followerBaseline),
-    reactionCount:room.reactionCount,
+    reactionCount:reactionTotal,
     commentCount:comments,
     giftCount:gifts._count,
     giftValueCents:gifts._sum.dollarValueCents??0,
@@ -232,6 +234,7 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
    where:{roomId:room.id,active:true},
    data:{active:false,lastSeenAt:new Date()}
   });
+  await clearLiveReactionCount(room.id);
   await syncAchievements(me.id);
 
   return NextResponse.json(updated);
