@@ -66,6 +66,7 @@ export function BattleRewardCenter(){
    <p>💎 Gems: {(data.balances?.GEM??0).toLocaleString()}</p>
    <p>⚔️ Battle Tokens: {(data.balances?.BATTLE_TOKEN??0).toLocaleString()}</p>
    <p>🃏 Double-Point Cards: {(data.balances?.CARD_DOUBLE_POINT??0).toLocaleString()}</p>
+   <p>🛡️ Shield Cards: {(data.balances?.CARD_SHIELD??0).toLocaleString()}</p>
   </div>
 
   <div className="featureCard">
