@@ -15,6 +15,15 @@ export function HQBattleEconomy(){
 
  useEffect(()=>{void load()},[]);
 
+ async function settle(id:string){
+  const reason=prompt("Reason for settling this battle reward?");
+  if(!reason)return;
+  const response=await fetch("/api/hq/battles/rewards/"+id,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({status:"SETTLED",reason})});
+  const result=await response.json();
+  setMessage(response.ok?"Battle reward settled.":result.error??"Unable to settle reward.");
+  if(response.ok)await load();
+ }
+
  async function rollup(){
   setBusy(true);setMessage("");
   const response=await fetch("/api/hq/battles",{method:"POST"});
@@ -34,6 +43,7 @@ export function HQBattleEconomy(){
   <p>Weekly jackpot reserve: {usd(data.reserves?.WEEKLY_JACKPOT_RESERVE??0)}</p>
   <p>Season championship reserve: {usd(data.reserves?.SEASON_CHAMPIONSHIP_RESERVE??0)}</p>
   <button type="button" onClick={rollup} disabled={busy}>{busy?"Running…":"Run Battle Rollups"}</button>
+  {data.pendingRewards?.length>0&&<details open><summary>Prize settlement queue</summary>{data.pendingRewards.map((row:any)=><div key={row.id}><b>@{row.user.username}</b> · {row.kind} · {usd(row.amountCents)} <button type="button" onClick={()=>settle(row.id)}>Settle</button></div>)}</details>}
   {data.recentAwards?.length>0&&<details><summary>Recent rollups</summary>{data.recentAwards.map((row:any)=><p key={row.id}>{row.kind} · {new Date(row.createdAt).toLocaleString()}</p>)}</details>}
   {message&&<p>{message}</p>}
  </section>;
