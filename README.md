@@ -1,5 +1,7 @@
 # OUTSiiDE
 
+**Production domain:** https://outsiide.net
+
 OUTSiiDE is a participation-first social platform for short-form video, Stories, Live, The Porch, Circles, Receipts, messaging, creator tools, and a private Owner HQ.
 
 ## Product principles
