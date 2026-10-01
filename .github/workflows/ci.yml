@@ -55,6 +55,9 @@ jobs:
       STRIPE_SECRET_KEY: sk_test_ci_fake
       STRIPE_WEBHOOK_SECRET: whsec_ci_fake
       CLIP_WORKER_SECRET: ci-only-clip-worker-secret-long-enough
+      PUSH_ENCRYPTION_KEY: 1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+      PUSH_WORKER_SECRET: ci-only-push-worker-secret-long-enough
+      WEB_PUSH_TEST_MODE: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -103,6 +106,12 @@ jobs:
           STRIPE_SECRET_KEY: sk_live_ci_fake
           STRIPE_WEBHOOK_SECRET: whsec_live_ci_fake
           CLIP_WORKER_SECRET: ci-only-clip-worker-secret-long-enough
+          PUSH_ENCRYPTION_KEY: 1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+          PUSH_WORKER_SECRET: ci-only-push-worker-secret-long-enough
+          WEB_PUSH_VAPID_PUBLIC_KEY: ci-vapid-public
+          WEB_PUSH_VAPID_PRIVATE_KEY: ci-vapid-private
+          WEB_PUSH_SUBJECT: mailto:security@outside.example.test
+          WEB_PUSH_TEST_MODE: "false"
         run: npm run deploy:preflight
 
       - run: npm run build
@@ -120,8 +129,24 @@ jobs:
           done
           cat /tmp/outside-next.log
           exit 1
+      - name: Start Web Push worker
+        run: |
+          PUSH_WORKER_BASE_URL=http://127.0.0.1:3000 \
+          PUSH_WORKER_SECRET="$PUSH_WORKER_SECRET" \
+          WEB_PUSH_TEST_MODE=true \
+          PUSH_WORKER_POLL_MS=1000 \
+          npm run push:worker > /tmp/outside-push-worker.log 2>&1 &
+          echo $! > /tmp/outside-push-worker.pid
+
       - name: Runtime smoke test
         run: npm run smoke
+
+      - name: Stop Web Push worker
+        if: always()
+        run: |
+          if [ -f /tmp/outside-push-worker.pid ]; then
+            kill "$(cat /tmp/outside-push-worker.pid)" || true
+          fi
 
       - name: Production monitor contract
         env:
@@ -162,6 +187,9 @@ jobs:
             -e STRIPE_SECRET_KEY="$STRIPE_SECRET_KEY" \
             -e STRIPE_WEBHOOK_SECRET="$STRIPE_WEBHOOK_SECRET" \
             -e CLIP_WORKER_SECRET="$CLIP_WORKER_SECRET" \
+            -e PUSH_ENCRYPTION_KEY="$PUSH_ENCRYPTION_KEY" \
+            -e PUSH_WORKER_SECRET="$PUSH_WORKER_SECRET" \
+            -e WEB_PUSH_TEST_MODE="$WEB_PUSH_TEST_MODE" \
             outside-ci
 
       - name: Verify production container
@@ -192,10 +220,18 @@ jobs:
       - name: Verify FFmpeg worker image
         run: docker run --rm outside-clip-worker-ci ffmpeg -version
 
+      - name: Build Web Push worker container
+        run: docker build -f Dockerfile.push-worker --tag outside-push-worker-ci .
+
+      - name: Verify Web Push worker image
+        run: docker run --rm --entrypoint node outside-push-worker-ci -e "require('web-push'); console.log('web-push ok')"
+
       - name: Stop production container
         if: always()
         run: docker stop outside-ci || true
 
       - name: Show server log on failure
         if: failure()
-        run: cat /tmp/outside-next.log || true
+        run: |
+          cat /tmp/outside-next.log || true
+          cat /tmp/outside-push-worker.log || true
