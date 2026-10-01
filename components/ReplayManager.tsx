@@ -41,7 +41,15 @@ export function ReplayManager({slug,host,status}:{slug:string;host:boolean;statu
    })
   });
   const data=await response.json();
-  setMsg(response.ok?"Clip created and queued for media processing.":data.error??"Unable to create clip.");
+  if(!response.ok){
+   setMsg(data.error??"Unable to create clip.");
+  }else if(data.processingReady){
+   setMsg("Clip created and ready.");
+  }else if(data.processingQueued){
+   setMsg("Clip created. Media processing is underway.");
+  }else{
+   setMsg(data.processingError??"Clip created, but media processing needs to be retried.");
+  }
  }
 
  if(status!=="ENDED"||!replay)return null;
