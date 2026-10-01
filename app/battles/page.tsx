@@ -11,7 +11,7 @@ export default function BattlesPage(){
   <p className="lede">1 vs 1, team battles, tournaments, Last Minute Surge, streak rewards and seasonal competition.</p>
   <div className="heroButtons">
    <Link className="gradientButton" href="/host/room">Start a Battle Live</Link>
-   <Link className="ghostButton" href="/battles/tournaments">Tournament Mode</Link><Link className="ghostButton" href="/battles/rewards">Rewards</Link>
+   <Link className="ghostButton" href="/battles/tournaments">Tournament Mode</Link><Link className="ghostButton" href="/battles/rewards">Rewards</Link><Link className="ghostButton" href="/battles/kingdoms">Kingdoms</Link>
   </div>
   <FeaturedBattleWinners/>
   <BattleLeaderboards/><BattleTopGifters/>
