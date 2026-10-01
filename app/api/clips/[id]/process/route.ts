@@ -1,6 +1,7 @@
 import {NextResponse} from "next/server";
 import {db} from "@/lib/db";
 import {currentUser} from "@/lib/session";
+import {checkAuthRateLimit} from "@/lib/authRateLimit";
 import {
  clipMediaPath,
  clipProcessingReady,
@@ -27,6 +28,21 @@ export async function POST(_:Request,{params}:{params:Promise<{id:string}>}){
 
  if(!clip||clip.creatorId!==me.id){
   return NextResponse.json({error:"Clip owner access required."},{status:403});
+ }
+
+ const throttle=await checkAuthRateLimit({
+  action:"CLIP_PROCESS",
+  identifier:clip.id,
+  request:_,
+  limit:3,
+  windowMs:10*60*1000,
+  blockMs:10*60*1000
+ });
+ if(!throttle.allowed){
+  return NextResponse.json(
+   {error:"Too many clip processing retries. Try again later."},
+   {status:429,headers:{"Retry-After":String(throttle.retryAfterSeconds)}}
+  );
  }
  if(clip.replay?.status!=="READY"){
   return NextResponse.json({error:"Source replay is not ready."},{status:409});
