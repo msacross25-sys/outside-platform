@@ -478,6 +478,9 @@ async function main(){
  const replayMediaOwner=await request("/api/porch/"+slug+"/replay-media",{cookie:hostCookie});
  expect(replayMediaOwner.response.status===307,"Replay owner did not receive protected storage redirect",{status:replayMediaOwner.response.status,data:replayMediaOwner.data});
 
+ const replayDownload=await request("/api/porch/"+slug+"/replay-media?download=1",{cookie:hostCookie});
+ expect(replayDownload.response.status===307,"Replay download did not receive protected attachment redirect",{status:replayDownload.response.status,data:replayDownload.data});
+
  const replayMediaViewer=await request("/api/porch/"+slug+"/replay-media",{cookie:charlieCookie});
  expect(replayMediaViewer.response.status===307,"Allowed viewer did not receive protected replay redirect",{status:replayMediaViewer.response.status,data:replayMediaViewer.data});
 
