@@ -202,6 +202,7 @@ model User {
   avatarUrl String?
   profileVideoUrl String?
   dateOfBirth DateTime?
+  regionCode String?
   verified Boolean @default(false)
   emailVerifiedAt DateTime?
   privacy AccountPrivacy @default(PUBLIC)
@@ -267,6 +268,11 @@ model User {
   favoritedBy FavoriteHost[] @relation("favoriteHostTarget")
   favoritePorches FavoritePorch[]
   monthlyHostRanks MonthlyHostRank[]
+  battleProfile BattleProfile?
+  battleResults BattleParticipantResult[]
+  battleEarnings BattleEarning[]
+  battlePass BattlePassProgress?
+  tournamentEntries BattleTournamentEntry[]
   staffProfile StaffProfile?
   moderationActions ModerationActionLog[] @relation("moderationActor")
   auditEvents AuditLog[] @relation("auditActor")
@@ -818,6 +824,12 @@ model GiftTransaction {
   senderId String
   recipientId String
   roomId String?
+  battleId String?
+  battleSide Int?
+  battlePoints Int @default(0)
+  battleMultiplier Int @default(1)
+  battleRewardPoolCents Int @default(0)
+  referralRewardCents Int @default(0)
   giftKey String
   giftName String
   coinCost BigInt
@@ -839,6 +851,7 @@ model GiftTransaction {
   @@index([recipientId, createdAt])
   @@index([recipientId, status, createdAt])
   @@index([roomId])
+  @@index([battleId, createdAt])
   @@index([status, createdAt])
 }
 
@@ -1040,15 +1053,34 @@ model FavoritePorch {
 model Battle {
   id String @id @default(cuid())
   roomId String
+  tournamentId String?
+  mode String @default("ONE_V_ONE")
   theme String
   durationMinutes Int
   status String @default("SCHEDULED")
+  surgeSeconds Int @default(30)
+  surgeMultiplier Int @default(2)
+  winnerSide Int?
+  totalGiftValueCents Int @default(0)
+  creatorPoolCents Int @default(0)
+  platformRevenueCents Int @default(0)
+  rewardPoolCents Int @default(0)
+  referralReserveCents Int @default(0)
+  roundNumber Int?
+  matchNumber Int?
   startedAt DateTime?
   endedAt DateTime?
+  finalizedAt DateTime?
+  featuredUntil DateTime?
   createdAt DateTime @default(now())
   room PorchRoom @relation(fields:[roomId], references:[id], onDelete:Cascade)
+  tournament BattleTournament? @relation(fields:[tournamentId], references:[id], onDelete:SetNull)
   teams BattleTeam[]
+  participantResults BattleParticipantResult[]
+  earnings BattleEarning[]
   @@index([roomId,status])
+  @@index([tournamentId,roundNumber,matchNumber])
+  @@index([status,createdAt])
 }
 
 model BattleTeam {
@@ -1057,6 +1089,9 @@ model BattleTeam {
   side Int
   memberIds String[]
   score Int @default(0)
+  basePoints Int @default(0)
+  surgePoints Int @default(0)
+  giftValueCents Int @default(0)
   battle Battle @relation(fields:[battleId], references:[id], onDelete:Cascade)
   @@unique([battleId,side])
 }
@@ -1074,6 +1109,119 @@ model MonthlyHostRank {
   @@index([month,rank])
 }
 
+
+model BattleProfile {
+  userId String @id
+  wins Int @default(0)
+  losses Int @default(0)
+  ties Int @default(0)
+  currentWinStreak Int @default(0)
+  bestWinStreak Int @default(0)
+  rankingPoints BigInt @default(0)
+  lifetimeBattlePoints BigInt @default(0)
+  lifetimeGiftValueCents BigInt @default(0)
+  rankTitle String @default("BRONZE")
+  featuredUntil DateTime?
+  recommendedUntil DateTime?
+  hallOfFame Boolean @default(false)
+  updatedAt DateTime @updatedAt
+  user User @relation(fields:[userId], references:[id], onDelete:Cascade)
+  @@index([rankingPoints])
+  @@index([rankTitle,rankingPoints])
+}
+
+model BattleParticipantResult {
+  id String @id @default(cuid())
+  battleId String
+  userId String
+  side Int
+  won Boolean @default(false)
+  tied Boolean @default(false)
+  battlePoints Int @default(0)
+  rankingPoints Int @default(0)
+  regionCode String?
+  createdAt DateTime @default(now())
+  battle Battle @relation(fields:[battleId], references:[id], onDelete:Cascade)
+  user User @relation(fields:[userId], references:[id], onDelete:Cascade)
+  @@unique([battleId,userId])
+  @@index([userId,createdAt])
+  @@index([createdAt,rankingPoints])
+  @@index([regionCode,createdAt,rankingPoints])
+}
+
+model BattleEarning {
+  id String @id @default(cuid())
+  battleId String
+  userId String
+  giftTransactionId String?
+  kind String
+  amountCents Int
+  status LedgerStatus @default(PENDING)
+  createdAt DateTime @default(now())
+  settledAt DateTime?
+  battle Battle @relation(fields:[battleId], references:[id], onDelete:Cascade)
+  user User @relation(fields:[userId], references:[id], onDelete:Restrict)
+  @@index([userId,status,createdAt])
+  @@index([battleId,createdAt])
+  @@index([giftTransactionId])
+}
+
+model BattleTournament {
+  id String @id @default(cuid())
+  name String
+  status String @default("REGISTRATION")
+  bracketSize Int
+  currentRound Int @default(1)
+  prizePoolCents Int @default(0)
+  startsAt DateTime?
+  endsAt DateTime?
+  createdAt DateTime @default(now())
+  battles Battle[]
+  entries BattleTournamentEntry[]
+  @@index([status,startsAt])
+}
+
+model BattleTournamentEntry {
+  id String @id @default(cuid())
+  tournamentId String
+  userId String
+  seed Int?
+  eliminated Boolean @default(false)
+  placement Int?
+  createdAt DateTime @default(now())
+  tournament BattleTournament @relation(fields:[tournamentId], references:[id], onDelete:Cascade)
+  user User @relation(fields:[userId], references:[id], onDelete:Cascade)
+  @@unique([tournamentId,userId])
+  @@index([tournamentId,eliminated,seed])
+  @@index([userId,createdAt])
+}
+
+model BattlePassProgress {
+  userId String @id
+  seasonKey String
+  freeXp Int @default(0)
+  premiumXp Int @default(0)
+  premiumActive Boolean @default(false)
+  level Int @default(1)
+  updatedAt DateTime @updatedAt
+  user User @relation(fields:[userId], references:[id], onDelete:Cascade)
+  @@index([seasonKey,level])
+}
+
+model BattleRewardLedger {
+  id String @id @default(cuid())
+  battleId String?
+  userId String?
+  kind String
+  currency String @default("CASH_CENTS")
+  amount Int
+  status String @default("RESERVED")
+  metadataJson String?
+  createdAt DateTime @default(now())
+  @@index([battleId,createdAt])
+  @@index([userId,createdAt])
+  @@index([status,createdAt])
+}
 
 enum AuthTokenType {
   EMAIL_VERIFY
