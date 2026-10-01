@@ -4,6 +4,9 @@ ALTER TYPE "NotificationType" ADD VALUE 'MESSAGE';
 -- CreateEnum
 CREATE TYPE "PushDeliveryStatus" AS ENUM ('PENDING','SENDING','SENT','RETRY','DEAD');
 
+-- AlterTable
+ALTER TABLE "Notification" ADD COLUMN "targetUrl" TEXT;
+
 -- CreateTable
 CREATE TABLE "PushSubscription" (
     "id" TEXT NOT NULL,
