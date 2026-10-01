@@ -43,7 +43,7 @@ for(const file of await walk(apiRoot)){
  if(mutating&&!publicMutationAllowlist.has(path)&&!authMarkers.some(marker=>content.includes(marker))){
   failures.push(path+" has a mutating API handler without a recognized auth guard.");
  }
- if(path.startsWith("app/api/hq/")&&!/(currentStaff\(|ownerAccess\(|mainOwner\()/.test(content)){
+ if(path.startsWith("app/api/hq/")&&!/(currentStaff\(|ownerAccess\(|mainOwner\(|financeStaff\()/.test(content)){
   failures.push(path+" is an HQ route without a recognized staff/owner authorization guard.");
  }
 }
