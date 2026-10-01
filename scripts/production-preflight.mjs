@@ -59,6 +59,10 @@ if((process.env.LIVE_MEDIA_PROVIDER??"").toLowerCase()!=="livekit"){
  errors.push("LIVE_MEDIA_PROVIDER must be livekit for production.");
 }
 
+if((process.env.LIVE_RECORDING_MODE??"").toLowerCase()!=="livekit"){
+ errors.push("LIVE_RECORDING_MODE must be livekit for production replay recording.");
+}
+
 const livekitUrl=process.env.LIVEKIT_URL;
 if(livekitUrl){
  try{

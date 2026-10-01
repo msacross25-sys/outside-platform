@@ -1,6 +1,7 @@
 import {db} from "@/lib/db";
 import {mediaStorageReady} from "@/lib/mediaStorage";
 import {livekitEnabled,liveMediaProvider} from "@/lib/livekit";
+import {liveRecordingMode,liveRecordingReady,liveRecordingTestMode} from "@/lib/liveRecording";
 
 export type ReadinessCheck={
  ok:boolean;
@@ -17,6 +18,7 @@ export type RuntimeReadiness={
   email:ReadinessCheck;
   media:ReadinessCheck;
   liveTransport:ReadinessCheck;
+  liveRecording:ReadinessCheck;
   appUrl:ReadinessCheck;
  };
 };
@@ -91,6 +93,14 @@ function liveTransportCheck(strict:boolean):ReadinessCheck{
  return {ok:true};
 }
 
+
+function liveRecordingCheck(strict:boolean):ReadinessCheck{
+ if(!strict&&liveRecordingTestMode()&&liveRecordingMode()==="livekit")return {ok:true};
+ if(liveRecordingMode()!=="livekit")return {ok:false,message:"Production replay recording must use LiveKit egress."};
+ if(!liveRecordingReady())return {ok:false,message:"Live replay recording or private storage configuration is incomplete."};
+ return {ok:true};
+}
+
 async function databaseCheck():Promise<ReadinessCheck>{
  try{
   await db.$queryRaw`SELECT 1`;
@@ -128,6 +138,7 @@ export async function runtimeReadiness():Promise<RuntimeReadiness>{
   email:emailCheck(strict),
   media:mediaCheck(strict),
   liveTransport:liveTransportCheck(strict),
+  liveRecording:liveRecordingCheck(strict),
   appUrl:appUrlCheck(strict)
  };
 

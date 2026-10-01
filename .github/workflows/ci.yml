@@ -37,6 +37,10 @@ jobs:
       LIVE_MEDIA_PROVIDER: livekit
       LIVEKIT_TEST_MODE: "true"
       LIVEKIT_URL: wss://livekit.example.test
+      LIVEKIT_API_KEY: ci-livekit-key
+      LIVEKIT_API_SECRET: ci-livekit-secret
+      LIVE_RECORDING_MODE: livekit
+      LIVE_RECORDING_TEST_MODE: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -77,6 +81,7 @@ jobs:
           LIVEKIT_URL: wss://livekit.example.test
           LIVEKIT_API_KEY: ci-livekit-key
           LIVEKIT_API_SECRET: ci-livekit-secret
+          LIVE_RECORDING_MODE: livekit
         run: npm run deploy:preflight
 
       - run: npm run build
@@ -129,6 +134,8 @@ jobs:
             -e LIVE_MEDIA_PROVIDER="$LIVE_MEDIA_PROVIDER" \
             -e LIVEKIT_TEST_MODE="$LIVEKIT_TEST_MODE" \
             -e LIVEKIT_URL="$LIVEKIT_URL" \
+            -e LIVE_RECORDING_MODE="$LIVE_RECORDING_MODE" \
+            -e LIVE_RECORDING_TEST_MODE="$LIVE_RECORDING_TEST_MODE" \
             outside-ci
 
       - name: Verify production container
