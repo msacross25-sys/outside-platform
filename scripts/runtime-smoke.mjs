@@ -669,7 +669,42 @@ async function main(){
  const replayNotifications=await db.notification.count({where:{recipientId:host.id,type:"REPLAY_READY"}});
  expect(replayNotifications===1,"Replay ready notification count was incorrect",{count:replayNotifications});
 
- console.log("11b. clip privacy and block enforcement");
+ console.log("11b. durable clip processing");
+ const clipCreate=await request("/api/porch/"+slug+"/clips",{
+  method:"POST",
+  cookie:hostCookie,
+  body:{title:"Runtime processed clip",startSeconds:0,endSeconds:1,visibility:"PUBLIC"}
+ });
+ expect(clipCreate.response.status===201&&clipCreate.data?.clip?.processingStatus==="PENDING","Clip request did not enter PENDING state",clipCreate.data);
+ const processedClipId=clipCreate.data.clip.id;
+
+ const pendingViewer=await request("/api/clips/"+processedClipId,{cookie:charlieCookie});
+ expect(pendingViewer.response.status===404,"Pending clip was visible to viewer",pendingViewer.data);
+
+ const workerSecret=process.env.CLIP_WORKER_SECRET;
+ expect(Boolean(workerSecret),"CLIP_WORKER_SECRET missing in runtime smoke environment.");
+
+ const claimResponse=await fetch(base+"/api/internal/clip-jobs/claim",{
+  method:"POST",
+  headers:{authorization:"Bearer "+workerSecret}
+ });
+ const claimed=await claimResponse.json();
+ expect(claimResponse.status===200&&claimed?.job?.id===processedClipId,"Worker could not claim pending clip",{status:claimResponse.status,data:claimed});
+
+ const processing=await db.clip.findUnique({where:{id:processedClipId}});
+ expect(processing?.processingStatus==="PROCESSING","Claimed clip was not marked PROCESSING",processing);
+
+ const completeResponse=await fetch(base+"/api/internal/clip-jobs/"+processedClipId+"/complete",{
+  method:"POST",
+  headers:{authorization:"Bearer "+workerSecret}
+ });
+ const completedClip=await completeResponse.json();
+ expect(completeResponse.status===200&&completedClip?.clip?.processingStatus==="READY","Worker could not finalize clip",{status:completeResponse.status,data:completedClip});
+
+ const clipMediaViewer=await request("/api/clips/"+processedClipId+"/media",{cookie:charlieCookie});
+ expect(clipMediaViewer.response.status===307,"Ready clip did not receive protected storage redirect",{status:clipMediaViewer.response.status,data:clipMediaViewer.data});
+
+ console.log("11c. clip privacy and block enforcement");
  const safetyClip=await db.clip.create({
   data:{
    creatorId:host.id,
@@ -678,7 +713,10 @@ async function main(){
    title:"Runtime safety clip",
    startSeconds:0,
    endSeconds:1,
-   visibility:"PUBLIC"
+   visibility:"PUBLIC",
+   processingStatus:"READY",
+   mediaUrl:"/api/clips/runtime-safety/media",
+   readyAt:new Date()
   }
  });
 
