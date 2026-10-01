@@ -139,6 +139,18 @@ export function BattleCenter({slug,members,host,status,meId}:{slug:string;member
   await load();
  }
 
+ async function useShieldCard(){
+  setMessage("");
+  const response=await fetch(`/api/porch/${slug}/battle/card`,{
+   method:"POST",
+   headers:{"content-type":"application/json"},
+   body:JSON.stringify({card:"SHIELD"})
+  });
+  const data=await response.json();
+  if(!response.ok){setMessage(data.error??"Unable to use Shield Card.");return}
+  setMessage("🛡️ Shield Card active for this match. A loss will not reset your win streak.");
+ }
+
  if(status!=="LIVE")return null;
 
  const activeTheme=BATTLE_THEMES.find(item=>item.key===battle?.theme);
@@ -167,7 +179,7 @@ export function BattleCenter({slug,members,host,status,meId}:{slug:string;member
     <article><h3>Side 1</h3>{leftTeam?.multiplierExpiresAt&&new Date(leftTeam.multiplierExpiresAt).getTime()>now&&leftTeam.activeMultiplier>1&&<p>🃏 {leftTeam.activeMultiplier}× card active</p>}{(leftTeam?.memberIds??[]).map(id=><p key={id}>{nameFor(id)}</p>)}<b>Score: {(leftTeam?.score??0).toLocaleString()}</b></article>
     <article><h3>Side 2</h3>{rightTeam?.multiplierExpiresAt&&new Date(rightTeam.multiplierExpiresAt).getTime()>now&&rightTeam.activeMultiplier>1&&<p>🃏 {rightTeam.activeMultiplier}× card active</p>}{(rightTeam?.memberIds??[]).map(id=><p key={id}>{nameFor(id)}</p>)}<b>Score: {(rightTeam?.score??0).toLocaleString()}</b></article>
    </div>
-   {myTeam&&<button type="button" onClick={useDoublePointCard} disabled={myCardActive}>{myCardActive?"Double-Point Card Active":"Use Double-Point Card"}</button>}{host&&<button type="button" onClick={stop}>End Battle</button>}
+   {myTeam&&<><button type="button" onClick={useDoublePointCard} disabled={myCardActive}>{myCardActive?"Double-Point Card Active":"Use Double-Point Card"}</button><button type="button" onClick={useShieldCard}>Use Shield Card</button></>}{host&&<button type="button" onClick={stop}>End Battle</button>}
   </>:<>
    {lastResult&&<div className="battleResult">
     <h2>{resultTheme?.icon??"🏁"} {winner}</h2>
