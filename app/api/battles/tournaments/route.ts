@@ -24,7 +24,7 @@ export async function GET(request:Request){
   }
  });
 
- return NextResponse.json({tournaments});
+ return NextResponse.json({tournaments:tournaments.map(tournament=>({...t,canManage:me?.id===tournament.ownerId,joined:!!me&&tournament.entries.some(entry=>entry.userId===me.id)}))});
 }
 
 export async function POST(request:Request){
