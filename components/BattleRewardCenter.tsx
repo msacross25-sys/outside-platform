@@ -24,6 +24,20 @@ export function BattleRewardCenter(){
   setBusy(false);
  }
 
+ async function claimPass(level:number,track:"FREE"|"PREMIUM"){
+  if(busy)return;
+  setBusy(true);setMessage("");
+  const response=await fetch("/api/battles/rewards/pass",{
+   method:"POST",
+   headers:{"content-type":"application/json"},
+   body:JSON.stringify({level,track})
+  });
+  const result=await response.json();
+  setMessage(response.ok?"🎫 "+result.label+" claimed!":result.error??"Unable to claim Battle Pass reward.");
+  if(response.ok)await load();
+  setBusy(false);
+ }
+
  if(!data)return <section className="featureCard"><p>Loading battle rewards…</p></section>;
 
  const profile=data.profile;
@@ -59,6 +73,22 @@ export function BattleRewardCenter(){
    <p>{(pass?.freeXp??0).toLocaleString()} XP · Level {pass?.level??1}</p>
    <p>Free Track active{pass?.premiumActive?" · Premium Track active":" · Premium Track not activated"}</p>
    {nextReward&&<p>Next reward milestone: Level {nextReward.level} · {nextReward.free}</p>}
+   <div className="battlePassRewards">
+    {BATTLE_PASS_REWARDS.map(reward=>{
+     const freeKey="BATTLE_PASS_FREE_L"+reward.level;
+     const premiumKey="BATTLE_PASS_PREMIUM_L"+reward.level;
+     const unlocked=(pass?.level??1)>=reward.level;
+     const freeClaimed=data.passClaims?.includes(freeKey);
+     const premiumClaimed=data.passClaims?.includes(premiumKey);
+     return <article key={reward.level} className="searchResult">
+      <b>Level {reward.level}</b>
+      <p>Free: {reward.free}</p>
+      <button type="button" disabled={!unlocked||freeClaimed} onClick={()=>claimPass(reward.level,"FREE")}>{freeClaimed?"Claimed":unlocked?"Claim Free":"Locked"}</button>
+      <p>Premium: {reward.premium}</p>
+      <button type="button" disabled={!unlocked||!pass?.premiumActive||premiumClaimed} onClick={()=>claimPass(reward.level,"PREMIUM")}>{premiumClaimed?"Claimed":!pass?.premiumActive?"Premium Inactive":unlocked?"Claim Premium":"Locked"}</button>
+     </article>;
+    })}
+   </div>
   </div>
 
   {data.badges?.length>0&&<div className="featureCard">
