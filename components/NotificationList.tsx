@@ -6,6 +6,7 @@ function copy(type:string){
  return type==="FOLLOW"?"followed you":
   type==="LIKE"?"liked your post":
   type==="COMMENT"?"commented on your post":
+  type==="FOLLOW_REQUEST"?"requested to follow you":
   type==="MESSAGE"?"sent you a message":
   type==="LIVE_STARTED"?"is LIVE now":
   type==="GIFT_RECEIVED"?"sent you a gift":
