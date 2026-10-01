@@ -462,8 +462,33 @@ async function main(){
 
  const end=await request("/api/porch/"+slug+"/lifecycle",{method:"POST",cookie:hostCookie,body:{action:"END"}});
  expect(end.response.status===200&&end.data?.status==="ENDED","Live end failed",end.data);
+
  const replay=await db.liveReplay.findUnique({where:{roomId:roomCreate.data.room.id}});
  expect(Boolean(replay),"Ending Live did not create replay metadata.");
+ expect(replay?.status==="READY","Test recording did not finalize replay as READY",replay);
+ expect(replay?.mediaUrl==="/api/porch/"+slug+"/replay-media","Replay did not use protected media delivery path",replay);
+ expect(Boolean(replay?.readyAt),"Ready replay did not record readyAt",replay);
+
+ const hostReplay=await request("/api/porch/"+slug+"/replay",{cookie:hostCookie});
+ expect(hostReplay.response.status===200&&hostReplay.data?.replay?.status==="READY","Host could not load ready replay",hostReplay.data);
+
+ const viewerReplay=await request("/api/porch/"+slug+"/replay",{cookie:charlieCookie});
+ expect(viewerReplay.response.status===200&&viewerReplay.data?.replay?.status==="READY","Allowed viewer could not load public replay",viewerReplay.data);
+
+ const replayMediaOwner=await request("/api/porch/"+slug+"/replay-media",{cookie:hostCookie});
+ expect(replayMediaOwner.response.status===307,"Replay owner did not receive protected storage redirect",{status:replayMediaOwner.response.status,data:replayMediaOwner.data});
+
+ const replayMediaViewer=await request("/api/porch/"+slug+"/replay-media",{cookie:charlieCookie});
+ expect(replayMediaViewer.response.status===307,"Allowed viewer did not receive protected replay redirect",{status:replayMediaViewer.response.status,data:replayMediaViewer.data});
+
+ const replayNotifications=await db.notification.count({where:{recipientId:host.id,type:"REPLAY_READY"}});
+ expect(replayNotifications===1,"Replay ready notification count was incorrect",{count:replayNotifications});
+
+ const deleteReplay=await request("/api/porch/"+slug+"/replay",{method:"PATCH",cookie:hostCookie,body:{status:"DELETED"}});
+ expect(deleteReplay.response.status===200&&deleteReplay.data?.replay?.status==="DELETED","Host could not delete replay",deleteReplay.data);
+
+ const deletedReplayMedia=await request("/api/porch/"+slug+"/replay-media",{cookie:hostCookie});
+ expect(deletedReplayMedia.response.status===404,"Deleted replay media remained accessible",{status:deletedReplayMedia.response.status,data:deletedReplayMedia.data});
 
  console.log("\nOUTSiiDE runtime smoke test passed.");
 }
