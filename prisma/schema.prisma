@@ -1180,6 +1180,7 @@ model BattleProfile {
   lifetimeBattlePoints BigInt @default(0)
   lifetimeGiftValueCents BigInt @default(0)
   rankTitle String @default("BRONZE")
+  selectedTitle String?
   featuredUntil DateTime?
   recommendedUntil DateTime?
   hallOfFame Boolean @default(false)
