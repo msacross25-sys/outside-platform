@@ -13,7 +13,8 @@ const required=[
  "MEDIA_S3_SECRET_ACCESS_KEY",
  "LIVEKIT_URL",
  "LIVEKIT_API_KEY",
- "LIVEKIT_API_SECRET"
+ "LIVEKIT_API_SECRET",
+ "REDIS_URL"
 ];
 
 const missing=required.filter(name=>!process.env[name]?.trim());
