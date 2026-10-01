@@ -774,6 +774,7 @@ model CoinPurchase {
   provider String
   providerSessionId String? @unique
   providerPaymentId String? @unique
+  providerChargeId String? @unique
   amountCents Int
   currency String @default("usd")
   coins BigInt
