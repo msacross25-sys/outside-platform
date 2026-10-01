@@ -3,6 +3,7 @@ import {db} from "@/lib/db";
 import {currentUser} from "@/lib/session";
 import {deleteStoredMedia} from "@/lib/mediaStorage";
 import {replayObjectKey} from "@/lib/liveRecording";
+import {getReplayAccess} from "@/lib/replayAccess";
 
 async function owned(slug:string,userId:string){
  return db.porchRoom.findUnique({
@@ -17,36 +18,9 @@ async function owned(slug:string,userId:string){
 export async function GET(_:Request,{params}:{params:Promise<{slug:string}>}){
  const {slug}=await params;
  const me=await currentUser();
+ const access=await getReplayAccess(slug,me?.id);
 
- const room=await db.porchRoom.findUnique({
-  where:{slug},
-  include:{
-   replay:true,
-   members:{where:{role:"HOST"},select:{userId:true}}
-  }
- });
-
- if(!room?.replay)return NextResponse.json({error:"Replay not found."},{status:404});
-
- const hostId=room.members[0]?.userId;
- const owner=me?.id===hostId;
-
- if((!room.replay.visible||room.replay.status==="DELETED")&&!owner){
-  return NextResponse.json({error:"Replay unavailable."},{status:404});
- }
- if(!owner&&room.replay.status!=="READY"){
-  return NextResponse.json({error:"Replay unavailable."},{status:404});
- }
- if(!owner&&room.visibility==="PRIVATE"){
-  return NextResponse.json({error:"Replay unavailable."},{status:404});
- }
- if(!owner&&room.visibility==="FOLLOWERS"){
-  if(!me)return NextResponse.json({error:"Followers-only replay."},{status:403});
-  const follows=hostId?await db.follow.findUnique({
-   where:{followerId_followingId:{followerId:me.id,followingId:hostId}}
-  }):null;
-  if(!follows)return NextResponse.json({error:"Followers-only replay."},{status:403});
- }
+ if(!access)return NextResponse.json({error:"Replay unavailable."},{status:404});
 
  const {
   creatorEarningsCents,
@@ -54,11 +28,11 @@ export async function GET(_:Request,{params}:{params:Promise<{slug:string}>}){
   downloadUrl,
   verifiedWatchSeconds,
   ...safe
- }=room.replay;
+ }=access.replay;
 
  return NextResponse.json({
-  replay:owner?room.replay:safe,
-  owner
+  replay:access.owner?access.replay:safe,
+  owner:access.owner
  });
 }
 
