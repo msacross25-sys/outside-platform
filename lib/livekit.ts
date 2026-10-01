@@ -23,6 +23,10 @@ export function livekitRoomName(roomId:string){
  return "outside_"+roomId;
 }
 
+export function roomIdFromLivekitRoomName(roomName:string){
+ return roomName.startsWith("outside_")?roomName.slice("outside_".length):null;
+}
+
 function clientUrl(){
  const value=process.env.LIVEKIT_URL;
  if(!value)throw new Error("LIVEKIT_URL is not configured.");
