@@ -31,6 +31,14 @@ export async function GET(request:Request){
      taxStatus:true,
      payoutEnabled:true
     }
+   },
+   payoutAccount:{
+    select:{
+     provider:true,
+     payoutsEnabled:true,
+     detailsSubmitted:true,
+     onboardingCompleteAt:true
+    }
    }
   }
  });
@@ -86,18 +94,13 @@ export async function GET(request:Request){
 
   if(available<MINIMUM_PAYOUT_CENTS&&!open)continue;
 
-  const application=user.hostApplication;
   queue.push({
    creator:user,
    availableCents:available,
    eligible:
     available>=MINIMUM_PAYOUT_CENTS&&
     user.status==="ACTIVE"&&
-    (!application||(
-     application.payoutEnabled&&
-     application.identityVerificationStatus==="VERIFIED"&&
-     application.taxStatus==="COMPLETE"
-    ))&&
+    Boolean(user.payoutAccount?.payoutsEnabled&&user.payoutAccount?.detailsSubmitted)&&
     exceptionCount===0,
    financialReviewRequired:exceptionCount>0,
    openPayout:open

@@ -51,6 +51,9 @@ jobs:
       LIVE_RECORDING_MODE: livekit
       LIVE_RECORDING_TEST_MODE: "true"
       REDIS_URL: redis://127.0.0.1:6379
+      STRIPE_TEST_MODE: "true"
+      STRIPE_SECRET_KEY: sk_test_ci_fake
+      STRIPE_WEBHOOK_SECRET: whsec_ci_fake
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -95,6 +98,9 @@ jobs:
           LIVEKIT_API_SECRET: ci-livekit-secret
           LIVE_RECORDING_MODE: livekit
           REDIS_URL: redis://127.0.0.1:6379
+          STRIPE_TEST_MODE: "false"
+          STRIPE_SECRET_KEY: sk_live_ci_fake
+          STRIPE_WEBHOOK_SECRET: whsec_live_ci_fake
         run: npm run deploy:preflight
 
       - run: npm run build
@@ -150,6 +156,9 @@ jobs:
             -e LIVE_RECORDING_MODE="$LIVE_RECORDING_MODE" \
             -e LIVE_RECORDING_TEST_MODE="$LIVE_RECORDING_TEST_MODE" \
             -e REDIS_URL="$REDIS_URL" \
+            -e STRIPE_TEST_MODE="$STRIPE_TEST_MODE" \
+            -e STRIPE_SECRET_KEY="$STRIPE_SECRET_KEY" \
+            -e STRIPE_WEBHOOK_SECRET="$STRIPE_WEBHOOK_SECRET" \
             outside-ci
 
       - name: Verify production container

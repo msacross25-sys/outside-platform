@@ -11,8 +11,7 @@ const publicMutationAllowlist=new Set([
  "app/api/auth/password-reset/request/route.ts",
  "app/api/auth/password-reset/confirm/route.ts",
  "app/api/auth/verify-email/route.ts",
- "app/api/auth/verify-email/request/route.ts",
- "app/api/webhooks/livekit/route.ts"
+ "app/api/auth/verify-email/request/route.ts"
 ]);
 
 const authMarkers=[
@@ -22,6 +21,11 @@ const authMarkers=[
  "mainOwner(",
  "currentAuth(",
  "financeStaff("
+];
+
+const signedWebhookMarkers=[
+ "verifyStripeWebhook(",
+ "new WebhookReceiver("
 ];
 
 async function walk(dir){
@@ -40,8 +44,12 @@ for(const file of await walk(apiRoot)){
  const path=relative(root,file).replaceAll("\\","/");
  const content=await readFile(file,"utf8");
  const mutating=/export\s+async\s+function\s+(POST|PUT|PATCH|DELETE)\b/.test(content);
- if(mutating&&!publicMutationAllowlist.has(path)&&!authMarkers.some(marker=>content.includes(marker))){
-  failures.push(path+" has a mutating API handler without a recognized auth guard.");
+ const authenticatedMutation=
+  publicMutationAllowlist.has(path)||
+  authMarkers.some(marker=>content.includes(marker))||
+  (path.startsWith("app/api/webhooks/")&&signedWebhookMarkers.some(marker=>content.includes(marker)));
+ if(mutating&&!authenticatedMutation){
+  failures.push(path+" has a mutating API handler without a recognized auth/signature guard.");
  }
  if(path.startsWith("app/api/hq/")&&!/(currentStaff\(|ownerAccess\(|mainOwner\(|financeStaff\()/.test(content)){
   failures.push(path+" is an HQ route without a recognized staff/owner authorization guard.");

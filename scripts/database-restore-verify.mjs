@@ -46,7 +46,11 @@ try{
   db.porchRoom.count(),
   db.liveReplay.count(),
   db.coinWallet.count(),
-  db.giftTransaction.count()
+  db.giftTransaction.count(),
+  db.coinPurchase.count(),
+  db.creatorPayoutAccount.count(),
+  db.creatorPayout.count(),
+  db.payoutLedgerEntry.count()
  ]);
 
  if(process.exitCode)process.exit(1);
@@ -67,7 +71,11 @@ try{
    porchRooms:critical[8],
    liveReplays:critical[9],
    coinWallets:critical[10],
-   giftTransactions:critical[11]
+   giftTransactions:critical[11],
+   coinPurchases:critical[12],
+   creatorPayoutAccounts:critical[13],
+   creatorPayouts:critical[14],
+   payoutLedgerEntries:critical[15]
   },
   checkedAt:new Date().toISOString()
  }));

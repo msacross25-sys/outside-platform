@@ -66,6 +66,25 @@ function totp(secret){
  return String(binary%1_000_000).padStart(6,"0");
 }
 
+async function stripeWebhook(event){
+ const raw=JSON.stringify(event);
+ const timestamp=Math.floor(Date.now()/1000).toString();
+ const secret=process.env.STRIPE_WEBHOOK_SECRET??"";
+ const signature=createHmac("sha256",secret).update(timestamp+"."+raw).digest("hex");
+ const response=await fetch(base+"/api/webhooks/stripe",{
+  method:"POST",
+  headers:{
+   "content-type":"application/json",
+   "stripe-signature":"t="+timestamp+",v1="+signature
+  },
+  body:raw,
+  redirect:"manual"
+ });
+ const text=await response.text();
+ let data=null;
+ try{data=text?JSON.parse(text):null}catch{data=text}
+ return {response,data};
+}
 async function signup(username,displayName){
  const email=username+"@smoke.test";
  const r=await request("/api/users",{method:"POST",body:{email,username,displayName,password}});
@@ -199,6 +218,159 @@ async function main(){
  const hqVerified=await request("/api/hq/overview",{cookie:secondHost.cookie});
  expect(hqVerified.response.status===200,"MFA-verified staff session could not access HQ",hqVerified.data);
  hostCookie=secondHost.cookie;
+
+ console.log("5b. Stripe coin purchases, refunds and creator payouts");
+ await db.user.updateMany({
+  where:{id:{in:[resetUser.id,bob.id]}},
+  data:{dateOfBirth:new Date("1990-01-01T00:00:00.000Z")}
+ });
+
+ const underageCheckout=await request("/api/wallet/checkout",{
+  method:"POST",
+  cookie:charlieCookie,
+  body:{packageKey:"starter"}
+ });
+ expect(underageCheckout.response.status===403,"Unknown/underage account was allowed to buy coins",underageCheckout.data);
+
+ const checkout=await request("/api/wallet/checkout",{
+  method:"POST",
+  cookie:resetCookie,
+  body:{packageKey:"starter"}
+ });
+ expect(checkout.response.status===201&&checkout.data?.purchaseId&&checkout.data?.checkoutUrl,"Stripe checkout session was not created",checkout.data);
+
+ const purchase=await db.coinPurchase.findUnique({where:{id:checkout.data.purchaseId}});
+ expect(Boolean(purchase?.providerSessionId&&purchase?.providerPaymentId),"Pending purchase did not retain Stripe references",purchase);
+
+ const paidEvent={
+  id:"evt_paid_"+suffix,
+  type:"checkout.session.completed",
+  data:{object:{
+   id:purchase.providerSessionId,
+   payment_status:"paid",
+   payment_intent:purchase.providerPaymentId,
+   amount_total:purchase.amountCents,
+   currency:"usd",
+   metadata:{purchaseId:purchase.id,userId:resetUser.id}
+  }}
+ };
+ const paidWebhook=await stripeWebhook(paidEvent);
+ expect(paidWebhook.response.status===200,"Paid Stripe webhook failed",paidWebhook.data);
+
+ const paidWallet=await db.coinWallet.findUnique({where:{userId:resetUser.id}});
+ expect(paidWallet?.balanceCoins===purchase.coins,"Paid checkout did not credit exact coin amount",paidWallet);
+
+ const duplicateWebhook=await stripeWebhook(paidEvent);
+ expect(duplicateWebhook.response.status===200,"Duplicate paid webhook failed",duplicateWebhook.data);
+ const duplicateWallet=await db.coinWallet.findUnique({where:{userId:resetUser.id}});
+ expect(duplicateWallet?.balanceCoins===purchase.coins,"Duplicate webhook credited coins twice",duplicateWallet);
+
+ const paymentIntentWebhook=await stripeWebhook({
+  id:"evt_pi_"+suffix,
+  type:"payment_intent.succeeded",
+  data:{object:{
+   id:purchase.providerPaymentId,
+   latest_charge:"ch_test_"+purchase.id,
+   metadata:{purchaseId:purchase.id,userId:resetUser.id}
+  }}
+ });
+ expect(paymentIntentWebhook.response.status===200,"Payment intent reconciliation failed",paymentIntentWebhook.data);
+
+ const refundWebhook=await stripeWebhook({
+  id:"evt_refund_"+suffix,
+  type:"charge.refunded",
+  data:{object:{
+   id:"ch_test_"+purchase.id,
+   payment_intent:purchase.providerPaymentId,
+   amount_refunded:purchase.amountCents
+  }}
+ });
+ expect(refundWebhook.response.status===200,"Refund webhook failed",refundWebhook.data);
+ const refundedPurchase=await db.coinPurchase.findUnique({where:{id:purchase.id}});
+ const refundedWallet=await db.coinWallet.findUnique({where:{userId:resetUser.id}});
+ expect(refundedPurchase?.status==="REFUNDED"&&refundedPurchase.reversedCoins===purchase.coins,"Refund did not reverse purchase coins",refundedPurchase);
+ expect(refundedWallet?.balanceCoins===0n,"Refund did not remove purchased coins",refundedWallet);
+
+ const chargebackCheckout=await request("/api/wallet/checkout",{
+  method:"POST",
+  cookie:resetCookie,
+  body:{packageKey:"starter"}
+ });
+ expect(chargebackCheckout.response.status===201&&chargebackCheckout.data?.purchaseId,"Chargeback test checkout was not created",chargebackCheckout.data);
+ const chargebackPurchase=await db.coinPurchase.findUnique({where:{id:chargebackCheckout.data.purchaseId}});
+ expect(Boolean(chargebackPurchase?.providerPaymentId),"Chargeback test purchase missed payment intent",chargebackPurchase);
+
+ const chargebackPaid=await stripeWebhook({
+  id:"evt_chargeback_paid_"+suffix,
+  type:"checkout.session.completed",
+  data:{object:{
+   id:chargebackPurchase.providerSessionId,
+   payment_status:"paid",
+   payment_intent:chargebackPurchase.providerPaymentId,
+   amount_total:chargebackPurchase.amountCents,
+   currency:"usd",
+   metadata:{purchaseId:chargebackPurchase.id,userId:resetUser.id}
+  }}
+ });
+ expect(chargebackPaid.response.status===200,"Chargeback test purchase was not credited",chargebackPaid.data);
+
+ await db.coinWallet.update({
+  where:{userId:resetUser.id},
+  data:{balanceCoins:{decrement:400n}}
+ });
+
+ const dispute=await stripeWebhook({
+  id:"evt_dispute_"+suffix,
+  type:"charge.dispute.created",
+  data:{object:{
+   id:"dp_test_"+suffix,
+   charge:"ch_dispute_"+chargebackPurchase.id,
+   payment_intent:chargebackPurchase.providerPaymentId
+  }}
+ });
+ expect(dispute.response.status===200,"Chargeback webhook failed",dispute.data);
+
+ const chargedBackPurchase=await db.coinPurchase.findUnique({where:{id:chargebackPurchase.id}});
+ const chargedBackWallet=await db.coinWallet.findUnique({where:{userId:resetUser.id}});
+ expect(chargedBackPurchase?.status==="CHARGEBACK"&&chargedBackPurchase.reversedCoins===chargebackPurchase.coins,"Chargeback did not reverse all purchased coins",chargedBackPurchase);
+ expect(chargedBackWallet?.balanceCoins===-400n,"Spent-coin chargeback did not preserve negative wallet liability",chargedBackWallet);
+
+ const connectStart=await request("/api/wallet/payout/onboarding",{method:"POST",cookie:bobCookie});
+ expect(connectStart.response.status===200&&connectStart.data?.onboardingUrl,"Creator payout onboarding did not start",connectStart.data);
+ const connectStatus=await request("/api/wallet/payout/onboarding",{cookie:bobCookie});
+ expect(connectStatus.response.status===200&&connectStatus.data?.account?.payoutsEnabled===true&&connectStatus.data?.account?.detailsSubmitted===true,"Creator payout onboarding did not become provider-ready",connectStatus.data);
+
+ await db.giftTransaction.create({data:{
+  senderId:resetUser.id,
+  recipientId:bob.id,
+  giftKey:"runtime-payout",
+  giftName:"Runtime Payout Seed",
+  coinCost:1n,
+  dollarValueCents:25000,
+  creatorShareCents:7000,
+  platformShareCents:18000,
+  status:"SETTLED",
+  settledAt:new Date()
+ }});
+
+ const payoutRequest=await request("/api/wallet/payout",{method:"POST",cookie:bobCookie});
+ expect(payoutRequest.response.status===200&&payoutRequest.data?.payout?.id,"Creator payout request failed",payoutRequest.data);
+ const payoutId=payoutRequest.data.payout.id;
+
+ const payoutProcessing=await request("/api/hq/finance/payouts/"+payoutId,{
+  method:"PATCH",
+  cookie:hostCookie,
+  body:{status:"PROCESSING",reason:"Runtime finance verification"}
+ });
+ expect(payoutProcessing.response.status===200&&payoutProcessing.data?.payout?.status==="PROCESSING","Payout could not enter processing",payoutProcessing.data);
+
+ const payoutPaid=await request("/api/hq/finance/payouts/"+payoutId,{
+  method:"PATCH",
+  cookie:hostCookie,
+  body:{status:"PAID",reason:"Runtime provider transfer verification"}
+ });
+ expect(payoutPaid.response.status===200&&payoutPaid.data?.payout?.status==="PAID","Provider payout transfer failed",payoutPaid.data);
+ expect(String(payoutPaid.data?.payout?.providerTransactionId??"").startsWith("tr_test_"),"Paid payout did not retain Stripe transfer ID",payoutPaid.data);
 
  console.log("6. profile privacy");
  const me=await request("/api/auth/me",{cookie:aliceCookie});
