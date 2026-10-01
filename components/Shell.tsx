@@ -6,7 +6,7 @@ import { currentUser } from "@/lib/session";
 const nav = [
   ["Home", "/"], ["Following", "/following"], ["Discover", "/discover"], ["Live", "/live"],
   ["The Porch", "/porch"], ["Battles", "/battles"], ["Circles", "/circles"], ["Receipts", "/receipts"],
-  ["Messages", "/messages"], ["Notifications", "/notifications"], ["Gifts", "/gifts"], ["Wallet", "/wallet"], ["Creator Center", "/creator"], ["Host Center", "/host"]
+  ["Messages", "/messages"], ["Notifications", "/notifications"], ["Gifts", "/gifts"], ["Wallet", "/wallet"], ["Referrals", "/referrals"], ["Creator Center", "/creator"], ["Host Center", "/host"]
 ];
 
 export async function Shell({ children }: { children: ReactNode }) {
