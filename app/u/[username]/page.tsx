@@ -18,6 +18,7 @@ export default async function Profile({params}:{params:Promise<{username:string}
    _count:{select:{followers:true,following:true,posts:true}},
    badges:{orderBy:{unlockedAt:"desc"},take:8},
    hostApplication:true,
+   battleProfile:true,
    viewingProgress:true,
    receivedGiftTransactions:{where:{status:"SETTLED"},select:{creatorShareCents:true}},
    porchMemberships:{where:{role:"HOST"},select:{roomId:true}},
@@ -81,6 +82,11 @@ export default async function Profile({params}:{params:Promise<{username:string}
  const canMessage=Boolean(me&&!own&&await contactAllowed(me.id,user.id,user.messagePrivacy));
  const visiblePostCount=own?user._count.posts:visiblePosts.length;
  const showActivity=own||!user.hideActivity;
+ const battleTitle=user.battleProfile?.selectedTitle==="BATTLE_KING"
+  ?"Battle King"
+  :user.battleProfile?.selectedTitle==="QUEEN_OF_BATTLES"
+   ?"Queen of Battles"
+   :null;
  const tabsUser={...user,posts:visiblePosts,liveReplays:visibleReplays};
 
  return <Shell>
@@ -92,6 +98,8 @@ export default async function Profile({params}:{params:Promise<{username:string}
      <h1>{user.displayName}</h1>
      <p className="lede">{user.bio||"Real people. Real moments."}</p>
      {user.hostApplication?.status==="APPROVED"&&<p>👑 Host</p>}
+     {battleTitle&&<p>⚔️ {battleTitle}</p>}
+     {user.battleProfile&&<p>{user.battleProfile.rankTitle} · {user.battleProfile.wins} wins · 🔥 {user.battleProfile.currentWinStreak} streak</p>}
      {live&&<a className="profileAction" href={"/porch/"+live.slug}>🔴 LIVE NOW · {live.title}</a>}
      {own?<a className="profileAction" href="/settings/profile">Edit Profile ✎</a>:<>
       <FollowButton username={user.username} initial={isFollowing} requested={requested}/>
