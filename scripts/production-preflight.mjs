@@ -17,7 +17,12 @@ const required=[
  "CLIP_WORKER_SECRET",
  "REDIS_URL",
  "STRIPE_SECRET_KEY",
- "STRIPE_WEBHOOK_SECRET"
+ "STRIPE_WEBHOOK_SECRET",
+ "PUSH_ENCRYPTION_KEY",
+ "PUSH_WORKER_SECRET",
+ "WEB_PUSH_VAPID_PUBLIC_KEY",
+ "WEB_PUSH_VAPID_PRIVATE_KEY",
+ "WEB_PUSH_SUBJECT"
 ];
 
 const missing=required.filter(name=>!process.env[name]?.trim());
@@ -47,6 +52,9 @@ if(mediaSecret.length<32){
 if((process.env.CLIP_WORKER_SECRET??"").length<32){
  errors.push("CLIP_WORKER_SECRET must be at least 32 characters.");
 }
+if((process.env.PUSH_WORKER_SECRET??"").length<32){
+ errors.push("PUSH_WORKER_SECRET must be at least 32 characters.");
+}
 
 const mfa=process.env.MFA_ENCRYPTION_KEY??"";
 let validMfa=/^[0-9a-f]{64}$/i.test(mfa);
@@ -54,6 +62,18 @@ if(!validMfa){
  try{validMfa=Buffer.from(mfa,"base64").length===32}catch{validMfa=false}
 }
 if(!validMfa)errors.push("MFA_ENCRYPTION_KEY must be 32 bytes as base64 or 64 hexadecimal characters.");
+
+const pushKey=process.env.PUSH_ENCRYPTION_KEY??"";
+let validPushKey=/^[0-9a-f]{64}$/i.test(pushKey);
+if(!validPushKey){
+ try{validPushKey=Buffer.from(pushKey,"base64").length===32}catch{validPushKey=false}
+}
+if(!validPushKey)errors.push("PUSH_ENCRYPTION_KEY must be 32 bytes as base64 or 64 hexadecimal characters.");
+
+const pushSubject=process.env.WEB_PUSH_SUBJECT??"";
+if(pushSubject&&!/^mailto:|^https:/i.test(pushSubject)){
+ errors.push("WEB_PUSH_SUBJECT must be a mailto: or https: URI.");
+}
 
 if((process.env.EMAIL_DELIVERY_MODE??"resend").toLowerCase()!=="resend"){
  errors.push("EMAIL_DELIVERY_MODE must be resend for production.");
@@ -73,6 +93,9 @@ if((process.env.LIVE_RECORDING_MODE??"").toLowerCase()!=="livekit"){
 
 if(process.env.STRIPE_TEST_MODE==="true"){
  errors.push("STRIPE_TEST_MODE must be disabled in production.");
+}
+if(process.env.WEB_PUSH_TEST_MODE==="true"){
+ errors.push("WEB_PUSH_TEST_MODE must be disabled in production.");
 }
 
 const livekitUrl=process.env.LIVEKIT_URL;
