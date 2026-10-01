@@ -21,7 +21,8 @@ const authMarkers=[
  "mainOwner(",
  "currentAuth(",
  "financeStaff(",
- "authorizedClipWorker("
+ "authorizedClipWorker(",
+ "authorizedPushWorker("
 ];
 
 const signedWebhookMarkers=[
@@ -82,6 +83,12 @@ for(const file of sourceFiles){
  }
  for(const check of secretPatterns){
   if(check.pattern.test(content))failures.push(path+" appears to contain "+check.name+".");
+ }
+ if(
+  path!=="lib/notifications.ts"&&
+  /\b(?:db|tx)\.notification\.(?:create|createMany)\s*\(/.test(content)
+ ){
+  failures.push(path+" contains direct notification database writes; use lib/notifications.ts so Push delivery is queued.");
  }
 }
 
