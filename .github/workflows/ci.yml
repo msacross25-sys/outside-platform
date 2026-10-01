@@ -37,6 +37,8 @@ jobs:
       LIVE_MEDIA_PROVIDER: livekit
       LIVEKIT_TEST_MODE: "true"
       LIVEKIT_URL: wss://livekit.example.test
+      LIVEKIT_API_KEY: ci-livekit-key
+      LIVEKIT_API_SECRET: ci-livekit-secret
       LIVE_RECORDING_MODE: livekit
       LIVE_RECORDING_TEST_MODE: "true"
     steps:
