@@ -8,17 +8,19 @@ export async function GET(){
  const me=await currentUser();
  if(!me)return NextResponse.json({error:"Sign in required."},{status:401});
 
- const [wallet,settled,pending,payouts,nextPayout,payoutAccount]=await Promise.all([
+ const [wallet,settledGifts,pendingGifts,settledBattles,pendingBattles,payouts,nextPayout,payoutAccount]=await Promise.all([
   db.coinWallet.findUnique({where:{userId:me.id}}),
-  db.giftTransaction.aggregate({where:{recipientId:me.id,status:"SETTLED"},_sum:{creatorShareCents:true}}),
-  db.giftTransaction.aggregate({where:{recipientId:me.id,status:"PENDING"},_sum:{creatorShareCents:true}}),
+  db.giftTransaction.aggregate({where:{recipientId:me.id,battleId:null,status:"SETTLED"},_sum:{creatorShareCents:true}}),
+  db.giftTransaction.aggregate({where:{recipientId:me.id,battleId:null,status:"PENDING"},_sum:{creatorShareCents:true}}),
+  db.battleEarning.aggregate({where:{userId:me.id,status:"SETTLED"},_sum:{amountCents:true}}),
+  db.battleEarning.aggregate({where:{userId:me.id,status:"PENDING"},_sum:{amountCents:true}}),
   db.creatorPayout.aggregate({where:{creatorId:me.id,status:{in:["PENDING","PROCESSING","PAID"]}},_sum:{amountCents:true}}),
   db.creatorPayout.findFirst({where:{creatorId:me.id,status:{in:["PENDING","PROCESSING"]}},orderBy:{createdAt:"desc"}}),
   db.creatorPayoutAccount.findUnique({where:{userId:me.id}})
  ]);
 
- const settledCents=settled._sum.creatorShareCents??0;
- const pendingCents=pending._sum.creatorShareCents??0;
+ const settledCents=(settledGifts._sum.creatorShareCents??0)+(settledBattles._sum.amountCents??0);
+ const pendingCents=(pendingGifts._sum.creatorShareCents??0)+(pendingBattles._sum.amountCents??0);
  const reservedOrPaidCents=payouts._sum.amountCents??0;
  const availableCents=Math.max(0,settledCents-reservedOrPaidCents);
 
@@ -43,7 +45,9 @@ export async function GET(){
    paidOrReservedCents:reservedOrPaidCents,
    minimumPayoutCents:MINIMUM_PAYOUT_CENTS,
    payoutEligible:availableCents>=MINIMUM_PAYOUT_CENTS,
-   nextPayout
+   nextPayout,
+   battleSettledCents:settledBattles._sum.amountCents??0,
+   battlePendingCents:pendingBattles._sum.amountCents??0
   }
  });
 }
