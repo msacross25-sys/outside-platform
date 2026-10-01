@@ -39,6 +39,11 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
   ?body.visibility
   :"PUBLIC";
 
+ const clipCount=await db.clip.count({where:{replayId:room.replay.id}});
+ if(clipCount>=50){
+  return NextResponse.json({error:"This replay already has the maximum of 50 clips."},{status:409});
+ }
+
  let clip=await db.clip.create({
   data:{
    creatorId:me.id,
