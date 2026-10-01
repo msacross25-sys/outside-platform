@@ -3,6 +3,8 @@ import {
  BATTLE_WINNER_FEATURE_HOURS,
  BATTLE_REWARD_POOL_WINNER_PERCENT,
  BATTLE_REWARD_POOL_WEEKLY_PERCENT,
+ STREAK_5_BONUS_COINS,
+ STREAK_25_VIP_DAYS,
  WIN_STREAK_REWARDS,
  battleRankFor,
  winnerRankingPoints
@@ -92,6 +94,8 @@ export async function finalizeBattle(battleId:string,endedAt=new Date()){
     const currentStreak=tied?0:won?(existing?.currentWinStreak??0)+1:protectedLoss?(existing?.currentWinStreak??0):0;
     const bestStreak=Math.max(existing?.bestWinStreak??0,currentStreak);
     const totalRanking=Number(existing?.rankingPoints??0n)+rankingPoints;
+    const projectedWins=(existing?.wins??0)+(won?1:0);
+    const projectedLifetimePoints=Number(existing?.lifetimeBattlePoints??0n)+pointsPerMember;
     const rank=battleRankFor(totalRanking);
 
     await tx.battleProfile.upsert({
@@ -140,6 +144,28 @@ export async function finalizeBattle(battleId:string,endedAt=new Date()){
      update:{name:rank.name+" Battle Rank",icon:"🎖️"}
     });
 
+    if(projectedWins>=1){
+     await tx.userBadge.upsert({
+      where:{userId_key:{userId,key:"FIRST_BATTLE_WIN"}},
+      create:{userId,key:"FIRST_BATTLE_WIN",name:"First Win",icon:"🏆",featured:false},
+      update:{}
+     });
+    }
+    if(projectedLifetimePoints>=1_000_000){
+     await tx.userBadge.upsert({
+      where:{userId_key:{userId,key:"BATTLE_POINTS_1M"}},
+      create:{userId,key:"BATTLE_POINTS_1M",name:"1 Million Battle Points",icon:"🎯",featured:true},
+      update:{featured:true}
+     });
+    }
+    if(bestStreak>=10){
+     await tx.userBadge.upsert({
+      where:{userId_key:{userId,key:"UNDEFEATED_CHAMPION"}},
+      create:{userId,key:"UNDEFEATED_CHAMPION",name:"Undefeated Champion",icon:"⚔️",featured:true},
+      update:{featured:true}
+     });
+    }
+
     const guildMembership=await tx.battleGuildMember.findUnique({
      where:{userId},
      include:{guild:{select:{id:true,regionCode:true}}}
@@ -185,6 +211,49 @@ export async function finalizeBattle(battleId:string,endedAt=new Date()){
     }
 
     if(won){
+     const previousStreak=existing?.currentWinStreak??0;
+
+     if(previousStreak<5&&currentStreak>=5){
+      await tx.coinWallet.upsert({
+       where:{userId},
+       create:{userId,balanceCoins:BigInt(STREAK_5_BONUS_COINS)},
+       update:{balanceCoins:{increment:BigInt(STREAK_5_BONUS_COINS)}}
+      });
+      await tx.battleRewardLedger.create({
+       data:{userId,battleId:battle.id,kind:"STREAK_5_REWARD",currency:"BONUS_COIN",amount:STREAK_5_BONUS_COINS,status:"CLAIMED"}
+      });
+     }
+
+     if(previousStreak<10&&currentStreak>=10){
+      await tx.hostCosmetic.upsert({
+       where:{userId_effectKey:{userId,effectKey:"streak-10-profile-frame"}},
+       create:{userId,effectKey:"streak-10-profile-frame",source:"WIN_STREAK_10"},
+       update:{source:"WIN_STREAK_10"}
+      });
+     }
+
+     if(previousStreak<25&&currentStreak>=25){
+      await tx.battleRewardLedger.create({
+       data:{userId,battleId:battle.id,kind:"STREAK_25_VIP",currency:"VIP_DAY",amount:STREAK_25_VIP_DAYS,status:"AVAILABLE"}
+      });
+     }
+
+     if(previousStreak<50&&currentStreak>=50){
+      await tx.userBadge.upsert({
+       where:{userId_key:{userId,key:"LEGENDARY_BATTLE_CHAMPION"}},
+       create:{userId,key:"LEGENDARY_BATTLE_CHAMPION",name:"Legendary Battle Champion",icon:"🔥",featured:true},
+       update:{featured:true}
+      });
+     }
+
+     if(previousStreak<100&&currentStreak>=100){
+      await tx.userBadge.upsert({
+       where:{userId_key:{userId,key:"BATTLE_HALL_OF_FAME"}},
+       create:{userId,key:"BATTLE_HALL_OF_FAME",name:"Battle Hall of Fame",icon:"🏛️",featured:true},
+       update:{featured:true}
+      });
+     }
+
      await tx.userBadge.upsert({
       where:{userId_key:{userId,key:"BATTLE_WINNER"}},
       create:{userId,key:"BATTLE_WINNER",name:"Battle Winner",icon:"🏆",featured:true},
