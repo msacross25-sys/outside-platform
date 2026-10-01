@@ -22,6 +22,7 @@ export async function Shell({ children }: { children: ReactNode }) {
           <div className="accountNav">
             <Link href={"/u/" + me.username}>Profile · @{me.username}</Link>
             <Link href="/settings/profile">Settings</Link>
+            <Link href="/support">Support</Link>
             <form action="/api/auth/logout" method="post"><button type="submit">Log out</button></form>
           </div>
         )}
