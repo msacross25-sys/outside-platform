@@ -62,6 +62,11 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
   if(participantIds.has(me.id))return NextResponse.json({error:"Battle participants cannot send gifts during their own active match."},{status:400});
 
   const split=battleSplit(gift.valueCents);
+  const referral=await db.referralAttribution.findUnique({
+   where:{referredUserId:me.id},
+   include:{referrer:{select:{status:true}}}
+  });
+  const referrerId=referral?.referrer.status==="ACTIVE"?referral.referrerId:null;
   const surge=surgeMultiplier(activeBattle.startedAt,activeBattle.durationMinutes);
   const cardMultiplier=team.multiplierExpiresAt&&team.multiplierExpiresAt>new Date()?Math.max(1,team.activeMultiplier):1;
   const multiplier=Math.min(4,surge*cardMultiplier);
@@ -113,6 +118,19 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
      });
     }
 
+    if(referrerId&&split.referralShareCents>0){
+     await tx.battleEarning.create({
+      data:{
+       battleId:activeBattle.id,
+       userId:referrerId,
+       giftTransactionId:giftTransaction.id,
+       kind:"BATTLE_REFERRAL_REWARD",
+       amountCents:split.referralShareCents,
+       status:"PENDING"
+      }
+     });
+    }
+
     const updatedTeam=await tx.battleTeam.updateMany({
      where:{battleId:activeBattle.id,side:requestedSide},
      data:{
@@ -139,11 +157,12 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
     await tx.battleRewardLedger.create({
      data:{
       battleId:activeBattle.id,
-      kind:"REFERRAL_RESERVE",
+      userId:referrerId,
+      kind:referrerId?"REFERRAL_REWARD_ALLOCATED":"REFERRAL_RESERVE",
       currency:"CASH_CENTS",
       amount:split.referralShareCents,
       status:"RESERVED",
-      metadataJson:JSON.stringify({giftTransactionId:giftTransaction.id,senderId:me.id})
+      metadataJson:JSON.stringify({giftTransactionId:giftTransaction.id,senderId:me.id,referrerId})
      }
     });
 
