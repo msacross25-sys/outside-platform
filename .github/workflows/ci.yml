@@ -54,6 +54,7 @@ jobs:
       STRIPE_TEST_MODE: "true"
       STRIPE_SECRET_KEY: sk_test_ci_fake
       STRIPE_WEBHOOK_SECRET: whsec_ci_fake
+      CLIP_WORKER_SECRET: ci-only-clip-worker-secret-long-enough
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -101,6 +102,7 @@ jobs:
           STRIPE_TEST_MODE: "false"
           STRIPE_SECRET_KEY: sk_live_ci_fake
           STRIPE_WEBHOOK_SECRET: whsec_live_ci_fake
+          CLIP_WORKER_SECRET: ci-only-clip-worker-secret-long-enough
         run: npm run deploy:preflight
 
       - run: npm run build
@@ -159,6 +161,7 @@ jobs:
             -e STRIPE_TEST_MODE="$STRIPE_TEST_MODE" \
             -e STRIPE_SECRET_KEY="$STRIPE_SECRET_KEY" \
             -e STRIPE_WEBHOOK_SECRET="$STRIPE_WEBHOOK_SECRET" \
+            -e CLIP_WORKER_SECRET="$CLIP_WORKER_SECRET" \
             outside-ci
 
       - name: Verify production container
@@ -182,6 +185,12 @@ jobs:
           ALLOW_INSECURE_PRODUCTION_SMOKE: "true"
           EXPECTED_RELEASE: ${{ github.sha }}
         run: npm run monitor:production
+
+      - name: Build clip worker container
+        run: docker build -f Dockerfile.clip-worker --tag outside-clip-worker-ci .
+
+      - name: Verify FFmpeg worker image
+        run: docker run --rm outside-clip-worker-ci ffmpeg -version
 
       - name: Stop production container
         if: always()
