@@ -5,7 +5,7 @@ import { currentUser } from "@/lib/session";
 
 const nav = [
   ["Home", "/"], ["Following", "/following"], ["Discover", "/discover"], ["Live", "/live"],
-  ["The Porch", "/porch"], ["Circles", "/circles"], ["Receipts", "/receipts"],
+  ["The Porch", "/porch"], ["Battles", "/battles"], ["Circles", "/circles"], ["Receipts", "/receipts"],
   ["Messages", "/messages"], ["Notifications", "/notifications"], ["Gifts", "/gifts"], ["Wallet", "/wallet"], ["Creator Center", "/creator"], ["Host Center", "/host"]
 ];
 
