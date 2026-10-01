@@ -23,7 +23,7 @@ export async function GET(request:Request,{params}:{params:Promise<{slug:string}
  const hostId=room.members[0]?.userId??null;
  const owner=Boolean(me&&hostId===me.id);
 
- if(room.replay.status!=="READY"||room.replay.status==="DELETED"){
+ if(room.replay.status!=="READY"){
   return NextResponse.json({error:"Replay unavailable."},{status:404});
  }
  if(!room.replay.visible&&!owner){
