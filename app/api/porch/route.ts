@@ -35,7 +35,7 @@ export async function POST(request:Request){
  const roomType=body?.roomType==="VOICE"?"VOICE":"VIDEO",visibility=["PUBLIC","FOLLOWERS","PRIVATE"].includes(body?.visibility)?body.visibility:"PUBLIC";
  const category=String(body?.category??"").trim().slice(0,80),coverImageUrl=String(body?.coverImageUrl??"").trim().slice(0,1000),defaultEffect=String(body?.defaultEffect??"").trim().slice(0,80),defaultBackdrop=String(body?.defaultBackdrop??"").trim().slice(0,80);
  const stageSize=Number(body?.stageSize??1);
- if(![1,5,7].includes(stageSize))return NextResponse.json({error:"Stage size must be 1, 5, or 7."},{status:400});
+ if(![1,5,7,10].includes(stageSize))return NextResponse.json({error:"Stage size must be 1, 5, 7, or 10."},{status:400});
  if(title.length<3)return NextResponse.json({error:"Room title must be at least 3 characters."},{status:400});
  let scheduledFor:Date|null=null;
  if(body?.scheduledFor){scheduledFor=new Date(body.scheduledFor);if(!Number.isFinite(scheduledFor.getTime()))return NextResponse.json({error:"Enter a valid date and time."},{status:400});if(scheduledFor.getTime()<=Date.now())return NextResponse.json({error:"Scheduled Porch rooms must be set for a future time."},{status:400})}
