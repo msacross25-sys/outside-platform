@@ -155,6 +155,15 @@ export function LiveKitRoomMedia({slug,roomType,status,meId,initialMembers,myRol
   room.on(RoomEvent.TrackSubscribed,refresh);
   room.on(RoomEvent.TrackUnsubscribed,refresh);
   room.on(RoomEvent.ParticipantPermissionsChanged,refresh);
+  room.on(RoomEvent.DataReceived,(payload,_participant,_kind,topic)=>{
+   if(!topic)return;
+   try{
+    const detail=JSON.parse(new TextDecoder().decode(payload));
+    window.dispatchEvent(new CustomEvent("outside:live-data",{
+     detail:{slug,topic,payload:detail}
+    }));
+   }catch{}
+  });
   room.on(RoomEvent.Disconnected,disconnected);
 
   void (async()=>{
