@@ -140,6 +140,50 @@ export async function finalizeBattle(battleId:string,endedAt=new Date()){
      update:{name:rank.name+" Battle Rank",icon:"🎖️"}
     });
 
+    const guildMembership=await tx.battleGuildMember.findUnique({
+     where:{userId},
+     include:{guild:{select:{id:true,regionCode:true}}}
+    });
+    const territoryRegion=regions.get(userId)??guildMembership?.guild.regionCode??null;
+    if(guildMembership&&territoryRegion){
+     const season=seasonKey(endedAt);
+     const existingTerritory=await tx.battleTerritory.findUnique({where:{regionCode:territoryRegion}});
+     const territory=!existingTerritory
+      ?await tx.battleTerritory.create({data:{regionCode:territoryRegion,seasonKey:season}})
+      :existingTerritory.seasonKey===season
+       ?existingTerritory
+       :await tx.battleTerritory.update({
+         where:{id:existingTerritory.id},
+         data:{seasonKey:season,holderGuildId:null,heldSince:null}
+        });
+
+     await tx.battleTerritoryScore.upsert({
+      where:{guildId_territoryId_seasonKey:{
+       guildId:guildMembership.guildId,
+       territoryId:territory.id,
+       seasonKey:season
+      }},
+      create:{
+       guildId:guildMembership.guildId,
+       territoryId:territory.id,
+       seasonKey:season,
+       points:BigInt(rankingPoints)
+      },
+      update:{points:{increment:BigInt(rankingPoints)}}
+     });
+
+     const leader=await tx.battleTerritoryScore.findFirst({
+      where:{territoryId:territory.id,seasonKey:season},
+      orderBy:{points:"desc"}
+     });
+     if(leader&&leader.guildId!==territory.holderGuildId){
+      await tx.battleTerritory.update({
+       where:{id:territory.id},
+       data:{holderGuildId:leader.guildId,heldSince:new Date()}
+      });
+     }
+    }
+
     if(won){
      await tx.userBadge.upsert({
       where:{userId_key:{userId,key:"BATTLE_WINNER"}},
