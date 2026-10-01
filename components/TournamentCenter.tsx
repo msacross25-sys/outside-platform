@@ -23,8 +23,7 @@ export function TournamentCenter(){
    body:JSON.stringify({
     name:form.get("name"),
     bracketSize:Number(form.get("bracketSize")),
-    startsAt:form.get("startsAt")||null,
-    prizePoolCents:Math.max(0,Math.round(Number(form.get("prizePoolDollars")||0)*100))
+    startsAt:form.get("startsAt")||null
    })
   });
   const result=await response.json();
@@ -57,10 +56,9 @@ export function TournamentCenter(){
     <label>Name <input name="name" minLength={3} maxLength={100} required/></label>
     <label>Bracket <select name="bracketSize" defaultValue="8"><option value="4">4 entrants</option><option value="8">8 entrants</option><option value="16">16 entrants</option><option value="32">32 entrants</option></select></label>
     <label>Starts <input name="startsAt" type="datetime-local"/></label>
-    <label>Optional prize pool ($) <input name="prizePoolDollars" type="number" min="0" step="0.01" defaultValue="0"/></label>
     <button disabled={busy}>{busy?"Creating…":"Create Tournament"}</button>
    </form>
-   <p><small>Creating and entering tournaments requires approved Host status.</small></p>
+   <p><small>Creating and entering tournaments requires approved Host status. Cash prizes are never Host-entered promises; funded platform rewards are handled through the Battle reward ledger.</small></p>
   </section>
 
   <section className="featureCard">
@@ -70,7 +68,7 @@ export function TournamentCenter(){
    {data?.tournaments?.map((t:any)=><article className="searchResult" key={t.id}>
     <Link href={"/battles/tournaments/"+t.id}><b>{t.name}</b></Link>
     <span>{t.status} · {t._count.entries}/{t.bracketSize} entrants · Round {t.currentRound}</span>
-    <p>Host: @{t.owner.username}{t.prizePoolCents>0?" · Prize pool $"+(t.prizePoolCents/100).toFixed(2):""}</p>
+    <p>Host: @{t.owner.username}</p>
     {t.status==="REGISTRATION"&&<button type="button" onClick={()=>join(t.id)}>Enter Tournament</button>}
     {t.status==="REGISTRATION"&&<button type="button" onClick={()=>start(t.id)}>Start Tournament</button>}
    </article>)}
