@@ -16,7 +16,8 @@
     "deploy:preflight": "node scripts/production-preflight.mjs",
     "monitor:production": "node scripts/production-smoke.mjs",
     "db:restore-verify": "node scripts/database-restore-verify.mjs",
-    "security:audit": "node scripts/security-static-audit.mjs"
+    "security:audit": "node scripts/security-static-audit.mjs",
+    "push:worker": "node scripts/push-worker.mjs"
   },
   "dependencies": {
     "@livekit/protocol": "1.50.4",
