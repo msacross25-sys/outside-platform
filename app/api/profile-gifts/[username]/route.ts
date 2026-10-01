@@ -4,6 +4,7 @@ import {db} from "@/lib/db";
 import {currentUser} from "@/lib/session";
 import {giftByKey,splitGift} from "@/lib/gifts";
 import {verifiedHours} from "@/lib/progression";
+import {createNotification} from "@/lib/notifications";
 
 export async function POST(request:Request,{params}:{params:Promise<{username:string}>}){
  const {username}=await params;
@@ -18,7 +19,7 @@ export async function POST(request:Request,{params}:{params:Promise<{username:st
  if(!gift)return NextResponse.json({error:"Gift not found."},{status:404});
  if(gift.premium&&body?.confirmed!==true)return NextResponse.json({error:"Confirmation required."},{status:409});
 
- const recipient=await db.user.findUnique({where:{username:username.toLowerCase()},select:{id:true,status:true}});
+ const recipient=await db.user.findUnique({where:{username:username.toLowerCase()},select:{id:true,username:true,status:true}});
  if(!recipient||recipient.status!=="ACTIVE")return NextResponse.json({error:"Creator not found."},{status:404});
  if(recipient.id===me.id)return NextResponse.json({error:"You cannot gift yourself."},{status:400});
 
@@ -52,6 +53,12 @@ export async function POST(request:Request,{params}:{params:Promise<{username:st
     }
    });
   },{isolationLevel:"Serializable"});
+  await createNotification({
+   recipientId:recipient.id,
+   actorId:me.id,
+   type:"GIFT_RECEIVED",
+   targetUrl:"/u/"+recipient.username
+  });
   return NextResponse.json({gift:{id:row.id,name:row.giftName},creatorSharePercent:share});
  }catch(e){
   return NextResponse.json({error:e instanceof Error&&e.message==="COINS"?"Not enough coins.":"Gift could not be sent."},{status:409});
