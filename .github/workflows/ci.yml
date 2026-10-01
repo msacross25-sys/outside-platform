@@ -34,6 +34,9 @@ jobs:
       ALLOW_TEST_MEDIA_STORAGE: "true"
       MEDIA_SIGNING_SECRET: ci-only-media-signing-secret-not-for-production
       READINESS_MODE: test
+      LIVE_MEDIA_PROVIDER: livekit
+      LIVEKIT_TEST_MODE: "true"
+      LIVEKIT_URL: wss://livekit.example.test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -70,6 +73,10 @@ jobs:
           MEDIA_S3_BUCKET: outside-ci
           MEDIA_S3_ACCESS_KEY_ID: ci-access-key
           MEDIA_S3_SECRET_ACCESS_KEY: ci-secret-key
+          LIVE_MEDIA_PROVIDER: livekit
+          LIVEKIT_URL: wss://livekit.example.test
+          LIVEKIT_API_KEY: ci-livekit-key
+          LIVEKIT_API_SECRET: ci-livekit-secret
         run: npm run deploy:preflight
 
       - run: npm run build
@@ -119,6 +126,9 @@ jobs:
             -e ALLOW_TEST_MEDIA_STORAGE="$ALLOW_TEST_MEDIA_STORAGE" \
             -e MEDIA_SIGNING_SECRET="$MEDIA_SIGNING_SECRET" \
             -e READINESS_MODE="$READINESS_MODE" \
+            -e LIVE_MEDIA_PROVIDER="$LIVE_MEDIA_PROVIDER" \
+            -e LIVEKIT_TEST_MODE="$LIVEKIT_TEST_MODE" \
+            -e LIVEKIT_URL="$LIVEKIT_URL" \
             outside-ci
 
       - name: Verify production container
