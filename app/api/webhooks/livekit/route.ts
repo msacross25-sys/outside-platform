@@ -4,6 +4,7 @@ import {WebhookReceiver} from "livekit-server-sdk";
 import {db} from "@/lib/db";
 import {livekitCredentials,roomIdFromLivekitRoomName} from "@/lib/livekit";
 import {replayMediaPath} from "@/lib/liveRecording";
+import {createNotification} from "@/lib/notifications";
 
 export const dynamic="force-dynamic";
 
@@ -105,12 +106,11 @@ export async function POST(request:Request){
  });
 
  if(!wasReady){
-  await db.notification.create({
-   data:{
-    recipientId:replay.hostId,
-    actorId:replay.hostId,
-    type:"REPLAY_READY"
-   }
+  await createNotification({
+   recipientId:replay.hostId,
+   actorId:replay.hostId,
+   type:"REPLAY_READY",
+   targetUrl:"/porch/"+replay.room.slug
   });
  }
 
