@@ -8,12 +8,13 @@ type TokenArgs={
  role:string|null|undefined;
 };
 
-function provider(){
- return (process.env.LIVE_MEDIA_PROVIDER||"mesh").toLowerCase();
+export function liveMediaProvider(){
+ const value=(process.env.LIVE_MEDIA_PROVIDER||"mesh").toLowerCase();
+ return value==="livekit"?"livekit":"mesh";
 }
 
 export function livekitEnabled(){
- if(provider()!=="livekit")return false;
+ if(liveMediaProvider()!=="livekit")return false;
  if(process.env.LIVEKIT_TEST_MODE==="true")return true;
  return Boolean(process.env.LIVEKIT_URL&&process.env.LIVEKIT_API_KEY&&process.env.LIVEKIT_API_SECRET);
 }
