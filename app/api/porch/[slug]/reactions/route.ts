@@ -3,6 +3,7 @@ import {currentUser} from "@/lib/session";
 import {getLiveMemberAccess,getPorchAccess} from "@/lib/porchAccess";
 import {checkActionLimit} from "@/lib/actionLimit";
 import {incrementLiveReactionCount,readLiveReactionCount} from "@/lib/liveScale";
+import {broadcastLivekitData} from "@/lib/livekit";
 
 export async function POST(request:Request,{params}:{params:Promise<{slug:string}>}){
  const {slug}=await params;
@@ -26,7 +27,7 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
 
  const count=await incrementLiveReactionCount(access.room.id);
  if(count===null)return NextResponse.json({error:"Reactions are temporarily unavailable."},{status:503});
-
+ try{await broadcastLivekitData(access.room.id,"outside.reaction",{count,emoji})}catch(error){console.error("Live reaction broadcast failed",error)}
  return NextResponse.json({ok:true,count});
 }
 
