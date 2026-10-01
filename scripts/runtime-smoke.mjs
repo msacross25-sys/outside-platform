@@ -19,8 +19,8 @@ function expect(condition,message,detail){
  if(!condition)fail(message,detail);
 }
 
-async function request(path,{method="GET",body,cookie}={}){
- const headers={};
+async function request(path,{method="GET",body,cookie,headers:extraHeaders={}}={}){
+ const headers={...extraHeaders};
  if(body!==undefined)headers["content-type"]="application/json";
  if(cookie)headers.cookie=cookie;
  const response=await fetch(base+path,{method,headers,body:body===undefined?undefined:JSON.stringify(body),redirect:"manual"});
@@ -100,6 +100,13 @@ async function main(){
 
  const unsignedWebhook=await request("/api/webhooks/livekit",{method:"POST",body:{event:"egress_ended"}});
  expect(unsignedWebhook.response.status===401,"Unsigned LiveKit webhook was accepted",unsignedWebhook.data);
+
+ const crossSite=await request("/api/users",{
+  method:"POST",
+  headers:{origin:"https://evil.example","sec-fetch-site":"cross-site"},
+  body:{email:"evil@smoke.test",username:"evil"+suffix,displayName:"Evil",password}
+ });
+ expect(crossSite.response.status===403,"Cross-site API mutation bypassed global protection",crossSite.data);
 
  const alice=await signup("smokea"+suffix,"Smoke Alice");
  const bob=await signup("smokeb"+suffix,"Smoke Bob");
