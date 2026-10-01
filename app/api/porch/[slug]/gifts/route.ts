@@ -118,7 +118,8 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
      data:{
       score:{increment:awardedPoints},
       basePoints:{increment:gift.coins},
-      surgePoints:{increment:awardedPoints-gift.coins},
+      cardPoints:{increment:gift.coins*(cardMultiplier-1)},
+      surgePoints:{increment:awardedPoints-gift.coins*cardMultiplier},
       giftValueCents:{increment:gift.valueCents}
      }
     });
