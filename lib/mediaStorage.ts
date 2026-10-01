@@ -162,7 +162,7 @@ export function createSignedMediaUpload(spec:UploadSpec):SignedUpload{
  };
 }
 
-export function createSignedMediaDownload(key:string,options?:{downloadName?:string}){
+export function createSignedMediaDownload(key:string,options?:{downloadName?:string;expiresInSeconds?:number}){
  if(mode()==="test"&&process.env.ALLOW_TEST_MEDIA_STORAGE==="true"){
   return "https://media.example.test/test-object";
  }
@@ -171,7 +171,22 @@ export function createSignedMediaDownload(key:string,options?:{downloadName?:str
   const safe=options.downloadName.replace(/[^a-zA-Z0-9._-]/g,"_");
   responseParams["response-content-disposition"]='attachment; filename="'+safe+'"';
  }
- return presign("GET",key,900,undefined,responseParams);
+ return presign("GET",key,options?.expiresInSeconds??900,undefined,responseParams);
+}
+
+export function createSignedStorageUpload(key:string,contentType:string,expiresInSeconds=1800){
+ if(mode()==="test"&&process.env.ALLOW_TEST_MEDIA_STORAGE==="true"){
+  return {
+   uploadUrl:"https://media.example.test/test-upload",
+   headers:{"content-type":contentType},
+   expiresInSeconds
+  };
+ }
+ return {
+  uploadUrl:presign("PUT",key,expiresInSeconds,contentType),
+  headers:{"content-type":contentType},
+  expiresInSeconds
+ };
 }
 
 function signedRequest(method:"HEAD"|"DELETE",key:string){
@@ -232,6 +247,28 @@ export async function verifyStoredMedia(spec:UploadSpec){
  }
 
  return {size:actualSize,contentType:actualType||spec.contentType};
+}
+
+export async function statStoredMedia(key:string){
+ if(mode()==="test"&&process.env.ALLOW_TEST_MEDIA_STORAGE==="true"){
+  return {exists:true,size:1024,contentType:"video/mp4"};
+ }
+
+ const signed=signedRequest("HEAD",key);
+ const response=await fetch(signed.url,{
+  method:"HEAD",
+  headers:signed.headers,
+  cache:"no-store"
+ });
+
+ if(response.status===404)return {exists:false,size:0,contentType:""};
+ if(!response.ok)throw new Error("Stored media object could not be inspected.");
+
+ return {
+  exists:true,
+  size:Number(response.headers.get("content-length")||"0"),
+  contentType:(response.headers.get("content-type")||"").split(";")[0].trim().toLowerCase()
+ };
 }
 
 export async function deleteStoredMedia(key:string){
