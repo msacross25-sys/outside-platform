@@ -2,8 +2,10 @@ import {NextResponse} from "next/server";
 import {db} from "@/lib/db";
 import {currentUser} from "@/lib/session";
 import {canPublishPorchRole,getLiveMemberAccess} from "@/lib/porchAccess";
+import {liveMediaProvider} from "@/lib/livekit";
 
 export async function GET(request:Request,{params}:{params:Promise<{slug:string}>}){
+ if(liveMediaProvider()!=="mesh")return NextResponse.json({error:"Legacy mesh signaling is disabled."},{status:410});
  const {slug}=await params;const me=await currentUser();
  if(!me)return NextResponse.json({error:"Sign in required."},{status:401});
  const access=await getLiveMemberAccess(slug,me.id);
@@ -15,6 +17,7 @@ export async function GET(request:Request,{params}:{params:Promise<{slug:string}
 }
 
 export async function POST(request:Request,{params}:{params:Promise<{slug:string}>}){
+ if(liveMediaProvider()!=="mesh")return NextResponse.json({error:"Legacy mesh signaling is disabled."},{status:410});
  const {slug}=await params;const me=await currentUser();
  if(!me)return NextResponse.json({error:"Sign in required."},{status:401});
  const access=await getLiveMemberAccess(slug,me.id);

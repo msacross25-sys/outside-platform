@@ -1,6 +1,7 @@
 import {NextResponse} from "next/server";
 import {db} from "@/lib/db";
 import {currentUser} from "@/lib/session";
+import {removeLivekitParticipant} from "@/lib/livekit";
 
 async function access(slug:string,userId:string){
  const room=await db.porchRoom.findUnique({where:{slug},include:{members:{where:{userId},select:{role:true}}}});
@@ -44,6 +45,11 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
    db.liveViewerPresence.updateMany({where:{roomId:a.room.id,userId},data:{active:false,lastSeenAt:new Date()}}),
    db.liveSignal.deleteMany({where:{roomId:a.room.id,OR:[{senderId:userId},{targetUserId:userId}]}})
   ]);
+  try{
+   await removeLivekitParticipant(a.room.id,userId);
+  }catch(error){
+   console.error("LiveKit kick disconnect failed",error);
+  }
   return NextResponse.json({kicked:true});
  }
 
@@ -59,6 +65,11 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
    db.liveViewerPresence.updateMany({where:{roomId:a.room.id,userId},data:{active:false,lastSeenAt:new Date()}}),
    db.liveSignal.deleteMany({where:{roomId:a.room.id,OR:[{senderId:userId},{targetUserId:userId}]}})
   ]);
+  try{
+   await removeLivekitParticipant(a.room.id,userId);
+  }catch(error){
+   console.error("LiveKit ban disconnect failed",error);
+  }
   return NextResponse.json({banned:true});
  }
 

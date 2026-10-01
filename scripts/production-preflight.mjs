@@ -10,7 +10,10 @@ const required=[
  "MEDIA_S3_ENDPOINT",
  "MEDIA_S3_BUCKET",
  "MEDIA_S3_ACCESS_KEY_ID",
- "MEDIA_S3_SECRET_ACCESS_KEY"
+ "MEDIA_S3_SECRET_ACCESS_KEY",
+ "LIVEKIT_URL",
+ "LIVEKIT_API_KEY",
+ "LIVEKIT_API_SECRET"
 ];
 
 const missing=required.filter(name=>!process.env[name]?.trim());
@@ -50,6 +53,20 @@ if((process.env.EMAIL_DELIVERY_MODE??"resend").toLowerCase()!=="resend"){
 
 if((process.env.MEDIA_STORAGE_MODE??"s3").toLowerCase()!=="s3"){
  errors.push("MEDIA_STORAGE_MODE must be s3 for production.");
+}
+
+if((process.env.LIVE_MEDIA_PROVIDER??"").toLowerCase()!=="livekit"){
+ errors.push("LIVE_MEDIA_PROVIDER must be livekit for production.");
+}
+
+const livekitUrl=process.env.LIVEKIT_URL;
+if(livekitUrl){
+ try{
+  const url=new URL(livekitUrl);
+  if(url.protocol!=="wss:")errors.push("LIVEKIT_URL must use WSS in production.");
+ }catch{
+  errors.push("LIVEKIT_URL is not a valid URL.");
+ }
 }
 
 if(errors.length){
