@@ -14,7 +14,9 @@ const required=[
  "LIVEKIT_URL",
  "LIVEKIT_API_KEY",
  "LIVEKIT_API_SECRET",
- "REDIS_URL"
+ "REDIS_URL",
+ "STRIPE_SECRET_KEY",
+ "STRIPE_WEBHOOK_SECRET"
 ];
 
 const missing=required.filter(name=>!process.env[name]?.trim());
@@ -62,6 +64,10 @@ if((process.env.LIVE_MEDIA_PROVIDER??"").toLowerCase()!=="livekit"){
 
 if((process.env.LIVE_RECORDING_MODE??"").toLowerCase()!=="livekit"){
  errors.push("LIVE_RECORDING_MODE must be livekit for production replay recording.");
+}
+
+if(process.env.STRIPE_TEST_MODE==="true"){
+ errors.push("STRIPE_TEST_MODE must be disabled in production.");
 }
 
 const livekitUrl=process.env.LIVEKIT_URL;
