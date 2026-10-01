@@ -19,14 +19,23 @@ export async function POST(){
   return NextResponse.json({error:"Complete creator payout onboarding before requesting a payout.",onboardingRequired:true},{status:403});
  }
 
- const exception=await db.giftTransaction.count({
-  where:{
-   recipientId:me.id,
-   status:{in:["CHARGEBACK","ADJUSTED"]},
-   createdAt:{gte:new Date(Date.now()-30*86400000)}
-  }
- });
- if(exception>0){
+ const [giftException,battleException]=await Promise.all([
+  db.giftTransaction.count({
+   where:{
+    recipientId:me.id,
+    status:{in:["CHARGEBACK","ADJUSTED"]},
+    createdAt:{gte:new Date(Date.now()-30*86400000)}
+   }
+  }),
+  db.battleEarning.count({
+   where:{
+    userId:me.id,
+    status:{in:["CHARGEBACK","ADJUSTED"]},
+    createdAt:{gte:new Date(Date.now()-30*86400000)}
+   }
+  })
+ ]);
+ if(giftException+battleException>0){
   return NextResponse.json({error:"Payout review required because recent financial exceptions exist."},{status:409});
  }
 
