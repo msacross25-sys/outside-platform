@@ -9,12 +9,12 @@ import {
 } from "@/lib/battles";
 
 type Member={userId:string;role:string;user:{username:string;displayName:string}};
-type Team={id:string;side:number;memberIds:string[];score:number};
+type Team={id:string;side:number;memberIds:string[];score:number;activeMultiplier:number;multiplierExpiresAt:string|null};
 type Battle={id:string;mode:string;theme:string;durationMinutes:number;status:string;startedAt:string|null;endedAt:string|null;teams:Team[]};
 type BattleResponse={battle:Battle|null;endsAt?:string;surgeStartsAt?:string;expired?:boolean;recent?:Battle|null};
 type Tournament={id:string;name:string;status:string;currentRound:number};
 
-export function BattleCenter({slug,members,host,status}:{slug:string;members:Member[];host:boolean;status:string}){
+export function BattleCenter({slug,members,host,status,meId}:{slug:string;members:Member[];host:boolean;status:string;meId:string}){
  const stage=useMemo(()=>members.filter(member=>["HOST","COHOST","SPEAKER"].includes(member.role)),[members]);
  const [battle,setBattle]=useState<Battle|null>(null);
  const [lastResult,setLastResult]=useState<Battle|null>(null);
@@ -126,6 +126,19 @@ export function BattleCenter({slug,members,host,status}:{slug:string;members:Mem
   setBattle(null);setEndsAt(null);setSurgeStartsAt(null);setMessage("Battle ended.");
  }
 
+ async function useDoublePointCard(){
+  setMessage("");
+  const response=await fetch(`/api/porch/${slug}/battle/card`,{
+   method:"POST",
+   headers:{"content-type":"application/json"},
+   body:JSON.stringify({card:"DOUBLE_POINT"})
+  });
+  const data=await response.json();
+  if(!response.ok){setMessage(data.error??"Unable to use battle card.");return}
+  setMessage("🃏 Double-Point Card activated for Side "+data.side+" for 60 seconds.");
+  await load();
+ }
+
  if(status!=="LIVE")return null;
 
  const activeTheme=BATTLE_THEMES.find(item=>item.key===battle?.theme);
@@ -136,6 +149,8 @@ export function BattleCenter({slug,members,host,status}:{slug:string;members:Mem
  const nameFor=(id:string)=>members.find(member=>member.userId===id)?.user.displayName??"Participant";
  const leftTeam=battle?.teams.find(team=>team.side===1);
  const rightTeam=battle?.teams.find(team=>team.side===2);
+ const myTeam=battle?.teams.find(team=>team.memberIds.includes(meId));
+ const myCardActive=!!myTeam?.multiplierExpiresAt&&new Date(myTeam.multiplierExpiresAt).getTime()>now&&myTeam.activeMultiplier>1;
  const resultLeft=lastResult?.teams.find(team=>team.side===1);
  const resultRight=lastResult?.teams.find(team=>team.side===2);
  const winner=resultLeft&&resultRight
@@ -149,10 +164,10 @@ export function BattleCenter({slug,members,host,status}:{slug:string;members:Mem
    <p>{battle.mode==="ONE_V_ONE"?"1 vs 1":battle.mode==="TOURNAMENT"?"Tournament Match":"Team vs Team"} · <b>{timeLeft||`${battle.durationMinutes}:00`}</b> remaining</p>
    {surgeActive&&<div className="featureCard"><b>⚡ LAST MINUTE SURGE · 2× POINTS</b><p>Every gift counts double for the final 30 seconds.</p></div>}
    <div className="battleTeams">
-    <article><h3>Side 1</h3>{(leftTeam?.memberIds??[]).map(id=><p key={id}>{nameFor(id)}</p>)}<b>Score: {(leftTeam?.score??0).toLocaleString()}</b></article>
-    <article><h3>Side 2</h3>{(rightTeam?.memberIds??[]).map(id=><p key={id}>{nameFor(id)}</p>)}<b>Score: {(rightTeam?.score??0).toLocaleString()}</b></article>
+    <article><h3>Side 1</h3>{leftTeam?.multiplierExpiresAt&&new Date(leftTeam.multiplierExpiresAt).getTime()>now&&leftTeam.activeMultiplier>1&&<p>🃏 {leftTeam.activeMultiplier}× card active</p>}{(leftTeam?.memberIds??[]).map(id=><p key={id}>{nameFor(id)}</p>)}<b>Score: {(leftTeam?.score??0).toLocaleString()}</b></article>
+    <article><h3>Side 2</h3>{rightTeam?.multiplierExpiresAt&&new Date(rightTeam.multiplierExpiresAt).getTime()>now&&rightTeam.activeMultiplier>1&&<p>🃏 {rightTeam.activeMultiplier}× card active</p>}{(rightTeam?.memberIds??[]).map(id=><p key={id}>{nameFor(id)}</p>)}<b>Score: {(rightTeam?.score??0).toLocaleString()}</b></article>
    </div>
-   {host&&<button type="button" onClick={stop}>End Battle</button>}
+   {myTeam&&<button type="button" onClick={useDoublePointCard} disabled={myCardActive}>{myCardActive?"Double-Point Card Active":"Use Double-Point Card"}</button>}{host&&<button type="button" onClick={stop}>End Battle</button>}
   </>:<>
    {lastResult&&<div className="battleResult">
     <h2>{resultTheme?.icon??"🏁"} {winner}</h2>
