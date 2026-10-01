@@ -13,7 +13,9 @@ const required=[
  "MEDIA_S3_SECRET_ACCESS_KEY",
  "LIVEKIT_URL",
  "LIVEKIT_API_KEY",
- "LIVEKIT_API_SECRET"
+ "LIVEKIT_API_SECRET",
+ "MEDIA_TRANSCODING_SERVICE_URL",
+ "MEDIA_PROCESSING_SIGNING_SECRET"
 ];
 
 const missing=required.filter(name=>!process.env[name]?.trim());
@@ -61,6 +63,14 @@ if((process.env.LIVE_MEDIA_PROVIDER??"").toLowerCase()!=="livekit"){
 
 if((process.env.LIVE_RECORDING_MODE??"").toLowerCase()!=="livekit"){
  errors.push("LIVE_RECORDING_MODE must be livekit for production replay recording.");
+}
+
+if((process.env.MEDIA_TRANSCODING_MODE??"").toLowerCase()!=="external"){
+ errors.push("MEDIA_TRANSCODING_MODE must be external for production clip processing.");
+}
+
+if((process.env.MEDIA_PROCESSING_SIGNING_SECRET??"").length<32){
+ errors.push("MEDIA_PROCESSING_SIGNING_SECRET must be at least 32 characters.");
 }
 
 const livekitUrl=process.env.LIVEKIT_URL;
