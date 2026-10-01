@@ -273,6 +273,7 @@ model User {
   battleEarnings BattleEarning[]
   battlePass BattlePassProgress?
   tournamentEntries BattleTournamentEntry[]
+  hostedBattleTournaments BattleTournament[]
   staffProfile StaffProfile?
   moderationActions ModerationActionLog[] @relation("moderationActor")
   auditEvents AuditLog[] @relation("auditActor")
@@ -1168,6 +1169,7 @@ model BattleEarning {
 
 model BattleTournament {
   id String @id @default(cuid())
+  ownerId String
   name String
   status String @default("REGISTRATION")
   bracketSize Int
@@ -1176,9 +1178,11 @@ model BattleTournament {
   startsAt DateTime?
   endsAt DateTime?
   createdAt DateTime @default(now())
+  owner User @relation(fields:[ownerId], references:[id], onDelete:Cascade)
   battles Battle[]
   entries BattleTournamentEntry[]
   @@index([status,startsAt])
+  @@index([ownerId,createdAt])
 }
 
 model BattleTournamentEntry {
