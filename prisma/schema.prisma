@@ -1095,7 +1095,7 @@ model BattleTeam {
   giftValueCents Int @default(0)
   activeMultiplier Int @default(1)
   multiplierExpiresAt DateTime?
-  battle Battle @relation(fields:[battleId], references:[id], onDelete:Cascade)
+  battle Battle? @relation(fields:[battleId], references:[id], onDelete:SetNull)
   @@unique([battleId,side])
 }
 
@@ -1154,7 +1154,7 @@ model BattleParticipantResult {
 
 model BattleEarning {
   id String @id @default(cuid())
-  battleId String
+  battleId String?
   userId String
   giftTransactionId String?
   kind String
