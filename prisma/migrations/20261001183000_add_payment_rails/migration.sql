@@ -1,11 +1,19 @@
 -- CreateEnum
 CREATE TYPE "CoinPurchaseStatus" AS ENUM ('PENDING', 'PAID', 'REFUNDED', 'CHARGEBACK', 'FAILED');
 
--- AlterTable
-ALTER TABLE "HostApplication"
-ADD COLUMN "payoutProvider" TEXT,
-ADD COLUMN "payoutProviderRef" TEXT,
-ADD COLUMN "payoutOnboardingCompleteAt" TIMESTAMP(3);
+-- CreateTable
+CREATE TABLE "CreatorPayoutAccount" (
+    "userId" TEXT NOT NULL,
+    "provider" TEXT NOT NULL,
+    "providerRef" TEXT NOT NULL,
+    "payoutsEnabled" BOOLEAN NOT NULL DEFAULT false,
+    "detailsSubmitted" BOOLEAN NOT NULL DEFAULT false,
+    "onboardingCompleteAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "CreatorPayoutAccount_pkey" PRIMARY KEY ("userId")
+);
 
 -- CreateTable
 CREATE TABLE "CoinPurchase" (
@@ -30,7 +38,10 @@ CREATE TABLE "CoinPurchase" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "HostApplication_payoutProviderRef_key" ON "HostApplication"("payoutProviderRef");
+CREATE UNIQUE INDEX "CreatorPayoutAccount_providerRef_key" ON "CreatorPayoutAccount"("providerRef");
+
+-- CreateIndex
+CREATE INDEX "CreatorPayoutAccount_provider_payoutsEnabled_idx" ON "CreatorPayoutAccount"("provider", "payoutsEnabled");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "CoinPurchase_providerSessionId_key" ON "CoinPurchase"("providerSessionId");
@@ -46,6 +57,9 @@ CREATE INDEX "CoinPurchase_userId_createdAt_idx" ON "CoinPurchase"("userId", "cr
 
 -- CreateIndex
 CREATE INDEX "CoinPurchase_status_createdAt_idx" ON "CoinPurchase"("status", "createdAt");
+
+-- AddForeignKey
+ALTER TABLE "CreatorPayoutAccount" ADD CONSTRAINT "CreatorPayoutAccount_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "CoinPurchase" ADD CONSTRAINT "CoinPurchase_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
