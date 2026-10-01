@@ -23,6 +23,8 @@ async function creditPurchase(args:{
 
   if(args.amountTotal!=null&&args.amountTotal!==purchase.amountCents)throw new Error("AMOUNT_MISMATCH");
   if(args.currency&&args.currency.toLowerCase()!==purchase.currency.toLowerCase())throw new Error("CURRENCY_MISMATCH");
+  if(args.sessionId&&purchase.providerSessionId&&args.sessionId!==purchase.providerSessionId)throw new Error("SESSION_MISMATCH");
+  if(args.paymentIntentId&&purchase.providerPaymentId&&args.paymentIntentId!==purchase.providerPaymentId)throw new Error("PAYMENT_MISMATCH");
 
   if(purchase.status==="PAID"||purchase.status==="REFUNDED"||purchase.status==="CHARGEBACK"){
    return purchase;
@@ -156,7 +158,10 @@ export async function POST(request:Request){
 
   if(event.type==="checkout.session.completed"||event.type==="checkout.session.async_payment_succeeded"){
    const purchaseId=String(object?.metadata?.purchaseId??"");
+   const metadataUserId=String(object?.metadata?.userId??"");
    if(purchaseId&&String(object?.payment_status??"paid")==="paid"){
+    const local=await db.coinPurchase.findUnique({where:{id:purchaseId},select:{userId:true}});
+    if(!local||!metadataUserId||metadataUserId!==local.userId)throw new Error("PURCHASE_USER_MISMATCH");
     await creditPurchase({
      purchaseId,
      sessionId:typeof object?.id==="string"?object.id:null,
