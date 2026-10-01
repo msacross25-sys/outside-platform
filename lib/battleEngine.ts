@@ -50,6 +50,11 @@ export async function finalizeBattle(battleId:string,endedAt=new Date()){
    select:{id:true,regionCode:true}
   });
   const regions=new Map(users.map(user=>[user.id,user.regionCode]));
+  const shieldRows=await tx.battleRewardLedger.findMany({
+   where:{battleId:battle.id,kind:"BATTLE_CARD_USED",currency:"CARD_SHIELD"},
+   select:{userId:true}
+  });
+  const shieldedUsers=new Set(shieldRows.map(row=>row.userId).filter((id):id is string=>!!id));
 
   for(const team of [side1,side2]){
    const memberCount=Math.max(1,team.memberIds.length);
@@ -83,7 +88,8 @@ export async function finalizeBattle(battleId:string,endedAt=new Date()){
     });
 
     const existing=await tx.battleProfile.findUnique({where:{userId}});
-    const currentStreak=tied?0:won?(existing?.currentWinStreak??0)+1:0;
+    const protectedLoss=!won&&!tied&&shieldedUsers.has(userId);
+    const currentStreak=tied?0:won?(existing?.currentWinStreak??0)+1:protectedLoss?(existing?.currentWinStreak??0):0;
     const bestStreak=Math.max(existing?.bestWinStreak??0,currentStreak);
     const totalRanking=Number(existing?.rankingPoints??0n)+rankingPoints;
     const rank=battleRankFor(totalRanking);
