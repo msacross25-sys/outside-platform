@@ -12,7 +12,7 @@ jobs:
   rollup:
     runs-on: ubuntu-latest
     env:
-      OUTSIDE_PRODUCTION_URL: ${{ vars.OUTSIDE_PRODUCTION_URL }}
+      OUTSIDE_PRODUCTION_URL: ${{ vars.OUTSIDE_PRODUCTION_URL || 'https://outsiide.net' }}
       BATTLE_CRON_SECRET: ${{ secrets.BATTLE_CRON_SECRET }}
     steps:
       - name: Run battle rollups
