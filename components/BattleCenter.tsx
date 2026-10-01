@@ -14,6 +14,7 @@ type Battle={id:string;mode:string;theme:string;durationMinutes:number;status:st
 type WinnerEffect={userId:string;victoryKey:string|null};
 type BattleResponse={battle:Battle|null;endsAt?:string;surgeStartsAt?:string;expired?:boolean;recent?:Battle|null;rematchRequests?:number;winnerEffects?:WinnerEffect[]};
 type Tournament={id:string;name:string;status:string;currentRound:number};
+type TournamentPair={tournamentId:string;tournamentName:string;roundNumber:number;matchNumber:number;leftId:string;rightId:string;left:{id:string;username:string;displayName:string}|null;right:{id:string;username:string;displayName:string}|null};
 
 export function BattleCenter({slug,members,host,status,meId}:{slug:string;members:Member[];host:boolean;status:string;meId:string}){
  const stage=useMemo(()=>members.filter(member=>["HOST","COHOST","SPEAKER"].includes(member.role)),[members]);
@@ -32,6 +33,7 @@ export function BattleCenter({slug,members,host,status,meId}:{slug:string;member
  const [tournamentId,setTournamentId]=useState("");
  const [roundNumber,setRoundNumber]=useState(1);
  const [matchNumber,setMatchNumber]=useState(1);
+ const [tournamentPair,setTournamentPair]=useState<TournamentPair|null>(null);
  const [rematchRequests,setRematchRequests]=useState(0);
  const [winnerEffects,setWinnerEffects]=useState<WinnerEffect[]>([]);
 
@@ -78,6 +80,27 @@ export function BattleCenter({slug,members,host,status,meId}:{slug:string;member
    .catch(()=>{});
  },[host]);
 
+ async function loadTournamentMatch(id:string){
+  setTournamentId(id);
+  setTournamentPair(null);
+  setLeft([]);
+  setRight([]);
+  if(!id)return;
+
+  const response=await fetch("/api/battles/tournaments/"+id+"/next-match",{cache:"no-store"});
+  const data=await response.json();
+  if(!response.ok){setMessage(data.error??"Unable to load bracket matchup.");return}
+  if(!data.match){setMessage("Tournament bracket is complete or waiting for results.");return}
+
+  const pair=data.match as TournamentPair;
+  setTournamentPair(pair);
+  setLeft([pair.leftId]);
+  setRight([pair.rightId]);
+  setRoundNumber(pair.roundNumber);
+  setMatchNumber(pair.matchNumber);
+  setMessage("");
+ }
+
  function toggle(side:"left"|"right",userId:string){
   const mine=side==="left"?left:right;
   const other=side==="left"?right:left;
@@ -97,6 +120,10 @@ export function BattleCenter({slug,members,host,status,meId}:{slug:string;member
   }
   if(mode==="TOURNAMENT"&&!tournamentId){
    setMessage("Choose a live tournament first.");
+   return;
+  }
+  if(mode==="TOURNAMENT"&&!tournamentPair){
+   setMessage("Load the next seeded tournament matchup first.");
    return;
   }
 
@@ -131,6 +158,7 @@ export function BattleCenter({slug,members,host,status,meId}:{slug:string;member
   if(!response.ok){setMessage(data.error??"Unable to end battle.");return}
   if(data.battle)setLastResult(data.battle);
   setBattle(null);setEndsAt(null);setSurgeStartsAt(null);setMessage("Battle ended.");
+  if(mode==="TOURNAMENT"&&tournamentId)await loadTournamentMatch(tournamentId);
  }
 
  async function requestRematch(){
@@ -204,6 +232,8 @@ export function BattleCenter({slug,members,host,status,meId}:{slug:string;member
  const rightTeam=battle?.teams.find(team=>team.side===2);
  const myTeam=battle?.teams.find(team=>team.memberIds.includes(meId));
  const myCardActive=!!myTeam?.multiplierExpiresAt&&new Date(myTeam.multiplierExpiresAt).getTime()>now&&myTeam.activeMultiplier>1;
+ const stageIds=new Set(stage.map(member=>member.userId));
+ const tournamentPairOnStage=!!tournamentPair&&stageIds.has(tournamentPair.leftId)&&stageIds.has(tournamentPair.rightId);
  const resultLeft=lastResult?.teams.find(team=>team.side===1);
  const resultRight=lastResult?.teams.find(team=>team.side===2);
  const winner=resultLeft&&resultRight
@@ -236,19 +266,26 @@ export function BattleCenter({slug,members,host,status,meId}:{slug:string;member
     <label>Theme <select value={theme} onChange={event=>setTheme(event.target.value)}>{BATTLE_THEMES.map(item=><option key={item.key} value={item.key}>{item.icon} {item.name}</option>)}</select></label>
     <label>Timer <select value={duration} onChange={event=>setDuration(Number(event.target.value))}>{BATTLE_DURATIONS.map(minutes=><option key={minutes} value={minutes}>{minutes} minutes</option>)}</select></label>
     {mode==="TOURNAMENT"&&<div className="featureCard">
-     <label>Tournament <select value={tournamentId} onChange={event=>{setTournamentId(event.target.value);const t=tournaments.find(x=>x.id===event.target.value);if(t)setRoundNumber(t.currentRound)}}>
+     <label>Tournament <select value={tournamentId} onChange={event=>void loadTournamentMatch(event.target.value)}>
       <option value="">Choose tournament</option>
       {tournaments.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
      </select></label>
-     <label>Round <input type="number" min="1" value={roundNumber} onChange={event=>setRoundNumber(Math.max(1,Number(event.target.value)))}/></label>
-     <label>Match <input type="number" min="1" value={matchNumber} onChange={event=>setMatchNumber(Math.max(1,Number(event.target.value)))}/></label>
+     {tournamentPair?<div>
+      <b>Round {roundNumber} · Match {matchNumber}</b>
+      <p>{tournamentPair.left?.displayName??"Competitor"} vs {tournamentPair.right?.displayName??"Competitor"}</p>
+      <small>{tournamentPairOnStage?"Both competitors are on stage.":"Both seeded competitors must be on stage before this matchup can start."}</small>
+     </div>:<p>Choose a live tournament to load its next seeded matchup.</p>}
     </div>}
-    <p>{mode==="ONE_V_ONE"?"Choose exactly one person per side.":"Choose 1–5 people per side. A full 5-vs-5 requires the 10-seat battle stage."}</p>
-    <div className="battleTeams">
-     <article><h3>Side 1 ({left.length}/5)</h3>{stage.map(member=><label key={member.userId}><input type="checkbox" checked={left.includes(member.userId)} onChange={()=>toggle("left",member.userId)}/> {member.user.displayName}</label>)}</article>
-     <article><h3>Side 2 ({right.length}/5)</h3>{stage.map(member=><label key={member.userId}><input type="checkbox" checked={right.includes(member.userId)} onChange={()=>toggle("right",member.userId)}/> {member.user.displayName}</label>)}</article>
-    </div>
-    <button type="button" onClick={start} disabled={!left.length||!right.length}>Start Battle</button>
+    {mode==="TOURNAMENT"
+     ?<p>Tournament bracket matches are locked to the seeded 1 vs 1 pairing shown above.</p>
+     :<>
+       <p>{mode==="ONE_V_ONE"?"Choose exactly one person per side.":"Choose 1–5 people per side. A full 5-vs-5 requires the 10-seat battle stage."}</p>
+       <div className="battleTeams">
+        <article><h3>Side 1 ({left.length}/5)</h3>{stage.map(member=><label key={member.userId}><input type="checkbox" checked={left.includes(member.userId)} onChange={()=>toggle("left",member.userId)}/> {member.user.displayName}</label>)}</article>
+        <article><h3>Side 2 ({right.length}/5)</h3>{stage.map(member=><label key={member.userId}><input type="checkbox" checked={right.includes(member.userId)} onChange={()=>toggle("right",member.userId)}/> {member.user.displayName}</label>)}</article>
+       </div>
+      </>}
+    <button type="button" onClick={start} disabled={!left.length||!right.length||(mode==="TOURNAMENT"&&!tournamentPairOnStage)}>Start Battle</button>
    </>:!lastResult&&<p>No battle is active right now.</p>}
   </>}
   {message&&<p>{message}</p>}
