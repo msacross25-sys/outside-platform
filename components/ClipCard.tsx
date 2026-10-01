@@ -26,6 +26,22 @@ export function ClipCard({clip,viewerId}:{clip:any;viewerId?:string}){
    .then(d=>d&&setComments(d.comments));
  },[clip.id]);
 
+ useEffect(()=>{
+  if(mediaUrl)return;
+  const timer=window.setInterval(()=>{
+   fetch(`/api/clips/${clip.id}`,{cache:"no-store"})
+    .then(r=>r.ok?r.json():null)
+    .then(d=>{
+     const next=d?.clip?.mediaUrl;
+     if(next){
+      setMediaUrl(next);
+      setMessage("Clip ready.");
+     }
+    });
+  },5000);
+  return()=>clearInterval(timer);
+ },[clip.id,mediaUrl]);
+
  async function like(){
   const next=!liked;
   const response=await fetch(`/api/clips/${clip.id}`,{method:next?"POST":"DELETE"});
