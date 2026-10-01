@@ -15,7 +15,7 @@ export async function GET(){
   db.battleRewardLedger.count({where:{userId:me.id,kind:"WINNER_WHEEL_SPIN",status:"AVAILABLE"}}),
   db.battleRewardLedger.groupBy({
    by:["currency"],
-   where:{userId:me.id,status:"AVAILABLE",currency:{in:["BATTLE_TOKEN","GEM","CARD_DOUBLE_POINT","CARD_SHIELD"]}},
+   where:{userId:me.id,status:"AVAILABLE",currency:{in:["BATTLE_TOKEN","GEM","DIAMOND","CARD_DOUBLE_POINT","CARD_SHIELD","CARD_REMATCH"]}},
    _sum:{amount:true}
   }),
   db.battleRewardLedger.findMany({where:{userId:me.id},orderBy:{createdAt:"desc"},take:20}),
@@ -72,10 +72,11 @@ export async function POST(){
      create:{userId:me.id,seasonKey,freeXp:reward.amount,level:battlePassLevel(reward.amount)},
      update:{freeXp:{increment:reward.amount}}
     });
-   }else if(reward.currency==="COSMETIC_VICTORY_FRAME"){
+   }else if(reward.currency==="COSMETIC_VICTORY_FRAME"||reward.currency==="COSMETIC_SPECIAL_EMOJI"){
+    const effectKey=reward.currency==="COSMETIC_VICTORY_FRAME"?"victory-frame":"battle-special-emoji-pack";
     await tx.hostCosmetic.upsert({
-     where:{userId_effectKey:{userId:me.id,effectKey:"victory-frame"}},
-     create:{userId:me.id,effectKey:"victory-frame",source:"WINNER_WHEEL"},
+     where:{userId_effectKey:{userId:me.id,effectKey}},
+     create:{userId:me.id,effectKey,source:"WINNER_WHEEL"},
      update:{source:"WINNER_WHEEL"}
     });
    }else{
