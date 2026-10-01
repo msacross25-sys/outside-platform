@@ -20,6 +20,7 @@ export function LiveChat({slug,role}:{slug:string;role:string|null}){
  const [pinned,setPinned]=useState<Msg|null>(null);
  const [error,setError]=useState("");
  const [likes,setLikes]=useState(0);
+ const [reactionOptions,setReactionOptions]=useState<string[]>(["❤️"]);
  const cursor=useRef<string|null>(null);
  const canPin=role==="HOST";
 
@@ -44,7 +45,7 @@ export function LiveChat({slug,role}:{slug:string;role:string|null}){
 
  async function loadReactions(){
   const response=await fetch(`/api/porch/${slug}/reactions`,{cache:"no-store"});
-  if(response.ok)setLikes((await response.json()).count??0);
+  if(response.ok){const data=await response.json();setLikes(data.count??0);setReactionOptions(data.reactionOptions??["❤️"])}
  }
 
  useEffect(()=>{
@@ -108,11 +109,11 @@ export function LiveChat({slug,role}:{slug:string;role:string|null}){
   }
  }
 
- async function react(){
+ async function react(emoji:string){
   const response=await fetch(`/api/porch/${slug}/reactions`,{
    method:"POST",
    headers:{"content-type":"application/json"},
-   body:JSON.stringify({emoji:"❤️"})
+   body:JSON.stringify({emoji})
   });
   if(response.ok){
    const data=await response.json();
@@ -132,7 +133,7 @@ export function LiveChat({slug,role}:{slug:string;role:string|null}){
  return <section className="featureCard">
   <div>
    <span className="eyebrow">Live Chat</span>
-   <button onClick={react}>❤️ {likes}</button>
+   <div className="liveReactionBar">{reactionOptions.map(emoji=><button type="button" key={emoji} onClick={()=>react(emoji)}>{emoji}</button>)}<span>{likes.toLocaleString()}</span></div>
   </div>
 
   {pinned&&<div className="featureCard">
