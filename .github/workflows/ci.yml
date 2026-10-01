@@ -41,6 +41,9 @@ jobs:
       LIVEKIT_API_SECRET: ci-livekit-secret
       LIVE_RECORDING_MODE: livekit
       LIVE_RECORDING_TEST_MODE: "true"
+      MEDIA_TRANSCODING_MODE: external
+      MEDIA_TRANSCODING_TEST_MODE: "true"
+      MEDIA_PROCESSING_SIGNING_SECRET: ci-only-clip-processing-signing-secret-long-enough
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -82,6 +85,9 @@ jobs:
           LIVEKIT_API_KEY: ci-livekit-key
           LIVEKIT_API_SECRET: ci-livekit-secret
           LIVE_RECORDING_MODE: livekit
+          MEDIA_TRANSCODING_MODE: external
+          MEDIA_TRANSCODING_SERVICE_URL: https://transcoder.example.test/jobs
+          MEDIA_PROCESSING_SIGNING_SECRET: ci-only-clip-processing-signing-secret-long-enough
         run: npm run deploy:preflight
 
       - run: npm run build
@@ -136,6 +142,9 @@ jobs:
             -e LIVEKIT_URL="$LIVEKIT_URL" \
             -e LIVE_RECORDING_MODE="$LIVE_RECORDING_MODE" \
             -e LIVE_RECORDING_TEST_MODE="$LIVE_RECORDING_TEST_MODE" \
+            -e MEDIA_TRANSCODING_MODE="$MEDIA_TRANSCODING_MODE" \
+            -e MEDIA_TRANSCODING_TEST_MODE="$MEDIA_TRANSCODING_TEST_MODE" \
+            -e MEDIA_PROCESSING_SIGNING_SECRET="$MEDIA_PROCESSING_SIGNING_SECRET" \
             outside-ci
 
       - name: Verify production container
