@@ -21,7 +21,7 @@ export async function POST(){
 
  const exception=await db.giftTransaction.count({
   where:{
-   OR:[{recipientId:me.id},{battleId:{not:null}}],
+   recipientId:me.id,
    status:{in:["CHARGEBACK","ADJUSTED"]},
    createdAt:{gte:new Date(Date.now()-30*86400000)}
   }
