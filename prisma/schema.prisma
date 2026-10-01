@@ -1092,6 +1092,7 @@ model BattleTeam {
   score Int @default(0)
   basePoints Int @default(0)
   surgePoints Int @default(0)
+  cardPoints Int @default(0)
   giftValueCents Int @default(0)
   activeMultiplier Int @default(1)
   multiplierExpiresAt DateTime?
