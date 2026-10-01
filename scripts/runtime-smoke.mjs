@@ -101,6 +101,9 @@ async function main(){
  const unsignedWebhook=await request("/api/webhooks/livekit",{method:"POST",body:{event:"egress_ended"}});
  expect(unsignedWebhook.response.status===401,"Unsigned LiveKit webhook was accepted",unsignedWebhook.data);
 
+ const unsignedClipCallback=await request("/api/webhooks/media/clip",{method:"POST",body:{clipId:"missing",status:"READY"}});
+ expect(unsignedClipCallback.response.status===401,"Unsigned clip processor callback was accepted",unsignedClipCallback.data);
+
  const alice=await signup("smokea"+suffix,"Smoke Alice");
  const bob=await signup("smokeb"+suffix,"Smoke Bob");
  const charlie=await signup("smokec"+suffix,"Smoke Charlie");
@@ -490,18 +493,38 @@ async function main(){
  const replayNotifications=await db.notification.count({where:{recipientId:host.id,type:"REPLAY_READY"}});
  expect(replayNotifications===1,"Replay ready notification count was incorrect",{count:replayNotifications});
 
- console.log("11b. clip privacy and block enforcement");
- const safetyClip=await db.clip.create({
-  data:{
-   creatorId:host.id,
-   roomId:roomCreate.data.room.id,
-   replayId:replay.id,
-   title:"Runtime safety clip",
+ console.log("11b. clip processing, privacy and block enforcement");
+ await db.liveReplay.update({
+  where:{id:replay.id},
+  data:{durationSeconds:Math.max(10,replay.durationSeconds)}
+ });
+
+ const createClip=await request("/api/porch/"+slug+"/clips",{
+  method:"POST",
+  cookie:hostCookie,
+  body:{
+   title:"Runtime processed clip",
    startSeconds:0,
    endSeconds:1,
    visibility:"PUBLIC"
   }
  });
+ expect(createClip.response.status===201&&createClip.data?.processingReady===true,"Clip processing test mode did not finalize clip",createClip.data);
+ const safetyClip=createClip.data.clip;
+ expect(safetyClip?.mediaUrl==="/api/clips/"+safetyClip.id+"/media","Processed clip did not use protected media route",safetyClip);
+
+ const clipMediaOwner=await request("/api/clips/"+safetyClip.id+"/media",{cookie:hostCookie});
+ expect(clipMediaOwner.response.status===307,"Clip owner did not receive protected media redirect",{status:clipMediaOwner.response.status,data:clipMediaOwner.data});
+
+ const clipMediaViewer=await request("/api/clips/"+safetyClip.id+"/media",{cookie:charlieCookie});
+ expect(clipMediaViewer.response.status===307,"Allowed viewer did not receive protected clip redirect",{status:clipMediaViewer.response.status,data:clipMediaViewer.data});
+
+ await db.clip.update({where:{id:safetyClip.id},data:{mediaUrl:null}});
+ const retryClip=await request("/api/clips/"+safetyClip.id+"/process",{method:"POST",cookie:hostCookie});
+ expect(retryClip.response.status===200&&retryClip.data?.ready===true,"Clip processing retry did not finalize in test mode",retryClip.data);
+
+ const retriedClip=await db.clip.findUnique({where:{id:safetyClip.id}});
+ expect(retriedClip?.mediaUrl==="/api/clips/"+safetyClip.id+"/media","Clip processing retry did not restore protected media URL",retriedClip);
 
  const clipVisible=await request("/api/clips/"+safetyClip.id,{cookie:charlieCookie});
  expect(clipVisible.response.status===200,"Public clip was not visible before block",clipVisible.data);
@@ -519,6 +542,9 @@ async function main(){
 
  const clipCommentsBlocked=await request("/api/clips/"+safetyClip.id+"/comments",{cookie:charlieCookie});
  expect(clipCommentsBlocked.response.status===404,"Blocked creator clip comments remained visible",clipCommentsBlocked.data);
+
+ const clipMediaBlocked=await request("/api/clips/"+safetyClip.id+"/media",{cookie:charlieCookie});
+ expect(clipMediaBlocked.response.status===404,"Blocked creator clip media remained accessible",{status:clipMediaBlocked.response.status,data:clipMediaBlocked.data});
 
  const roomClipsBlocked=await request("/api/porch/"+slug+"/clips",{cookie:charlieCookie});
  expect(roomClipsBlocked.response.status===200&&!roomClipsBlocked.data?.clips?.some(x=>x.id===safetyClip.id),"Blocked creator clip remained in room listing",roomClipsBlocked.data);
