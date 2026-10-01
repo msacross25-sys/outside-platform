@@ -158,7 +158,26 @@ export async function finalizeBattle(battleId:string,endedAt=new Date()){
       update:{featured:true}
      });
     }
-    if(bestStreak>=10){
+    if(projectedWins>=25){
+     await tx.userBadge.upsert({
+      where:{userId_key:{userId,key:"BATTLE_KING_TITLE_UNLOCK"}},
+      create:{userId,key:"BATTLE_KING_TITLE_UNLOCK",name:"Battle King Title Unlocked",icon:"👑",featured:false},
+      update:{}
+     });
+     await tx.userBadge.upsert({
+      where:{userId_key:{userId,key:"QUEEN_OF_BATTLES_TITLE_UNLOCK"}},
+      create:{userId,key:"QUEEN_OF_BATTLES_TITLE_UNLOCK",name:"Queen of Battles Title Unlocked",icon:"👑",featured:false},
+      update:{}
+     });
+    }
+    if(projectedWins>=100){
+     await tx.userBadge.upsert({
+      where:{userId_key:{userId,key:"GRAND_CHAMPION"}},
+      create:{userId,key:"GRAND_CHAMPION",name:"Grand Champion",icon:"🏆",featured:true},
+      update:{featured:true}
+     });
+    }
+    if((existing?.losses??0)===0&&projectedWins>=10){
      await tx.userBadge.upsert({
       where:{userId_key:{userId,key:"UNDEFEATED_CHAMPION"}},
       create:{userId,key:"UNDEFEATED_CHAMPION",name:"Undefeated Champion",icon:"⚔️",featured:true},
