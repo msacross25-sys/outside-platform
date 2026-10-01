@@ -49,6 +49,7 @@ enum NotificationType {
   FOLLOW
   LIKE
   COMMENT
+  MESSAGE
   LIVE_STARTED
   GIFT_RECEIVED
   FOLLOWER_MILESTONE
@@ -56,6 +57,14 @@ enum NotificationType {
   CREATOR_LEVEL
   BADGE_UNLOCKED
 }
+enum PushDeliveryStatus {
+  PENDING
+  SENDING
+  SENT
+  RETRY
+  DEAD
+}
+
 enum AccountPrivacy {
   PUBLIC
   PRIVATE
@@ -232,6 +241,7 @@ model User {
   trustCases TrustCase[] @relation("trustCaseTarget")
   notifications Notification[] @relation("notificationRecipient")
   notificationsSent Notification[] @relation("notificationActor")
+  pushSubscriptions PushSubscription[]
   conversationMembers ConversationMember[]
   sentMessages Message[] @relation("messageSender")
   circleMemberships CircleMember[]
@@ -428,6 +438,21 @@ model Story {
 }
 
 
+model PushSubscription {
+  id String @id @default(cuid())
+  userId String
+  endpointHash String @unique
+  subscriptionEncrypted String
+  userAgent String?
+  disabledAt DateTime?
+  lastSeenAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveries PushDelivery[]
+  @@index([userId, disabledAt])
+}
+
 model Notification {
   id String @id @default(cuid())
   recipientId String
@@ -438,9 +463,29 @@ model Notification {
   createdAt DateTime @default(now())
   recipient User @relation("notificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
   actor User @relation("notificationActor", fields: [actorId], references: [id], onDelete: Cascade)
+  pushDeliveries PushDelivery[]
   @@index([recipientId, createdAt])
   @@index([recipientId, readAt])
   @@index([actorId])
+}
+
+model PushDelivery {
+  id String @id @default(cuid())
+  notificationId String
+  subscriptionId String
+  status PushDeliveryStatus @default(PENDING)
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now())
+  claimedAt DateTime?
+  sentAt DateTime?
+  lastError String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  subscription PushSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  @@unique([notificationId, subscriptionId])
+  @@index([status, nextAttemptAt])
+  @@index([subscriptionId, status])
 }
 
 
