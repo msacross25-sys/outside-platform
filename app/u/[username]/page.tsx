@@ -88,6 +88,7 @@ export default async function Profile({params}:{params:Promise<{username:string}
   :user.battleProfile?.selectedTitle==="QUEEN_OF_BATTLES"
    ?"Queen of Battles"
    :null;
+ const battleVipActive=!!user.battleProfile?.vipUntil&&user.battleProfile.vipUntil>new Date();
  const cosmetics=user.battleCosmeticSelection;
  const frameActive=Boolean(cosmetics?.frameKey);
  const nameActive=Boolean(cosmetics?.nameEffectKey);
@@ -104,6 +105,7 @@ export default async function Profile({params}:{params:Promise<{username:string}
      <p className="lede">{user.bio||"Real people. Real moments."}</p>
      {user.hostApplication?.status==="APPROVED"&&<p>👑 Host</p>}
      {battleTitle&&<p>⚔️ {battleTitle}</p>}
+     {battleVipActive&&<p>💫 Battle VIP</p>}
      {user.battleProfile&&<p>{user.battleProfile.rankTitle} · {user.battleProfile.wins} wins · 🔥 {user.battleProfile.currentWinStreak} streak</p>}
      {cosmetics&&(cosmetics.victoryKey||cosmetics.emojiKey||cosmetics.giftEffectKey)&&<div className="battleCosmeticChips">
       {cosmetics.victoryKey&&<span>✨ Victory FX</span>}
