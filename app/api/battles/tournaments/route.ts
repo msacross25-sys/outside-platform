@@ -37,7 +37,6 @@ export async function POST(request:Request){
  const body=await request.json().catch(()=>null);
  const name=String(body?.name??"").trim().slice(0,100);
  const bracketSize=Number(body?.bracketSize);
- const prizePoolCents=Math.max(0,Math.floor(Number(body?.prizePoolCents??0)));
  let startsAt:Date|null=null;
 
  if(name.length<3)return NextResponse.json({error:"Tournament name must be at least 3 characters."},{status:400});
@@ -53,7 +52,7 @@ export async function POST(request:Request){
    ownerId:me.id,
    name,
    bracketSize,
-   prizePoolCents,
+   prizePoolCents:0,
    startsAt,
    entries:{create:{userId:me.id,seed:1}}
   },
