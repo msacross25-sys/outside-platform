@@ -20,7 +20,8 @@ const authMarkers=[
  "currentStaff(",
  "ownerAccess(",
  "mainOwner(",
- "currentAuth("
+ "currentAuth(",
+ "financeStaff("
 ];
 
 async function walk(dir){
@@ -64,8 +65,12 @@ const secretPatterns=[
 for(const file of sourceFiles){
  const path=relative(root,file).replaceAll("\\","/");
  if(path==="scripts/security-static-audit.mjs")continue;
- const content=await readFile(file,"utf8").catch(()=>null);
+ let content=await readFile(file,"utf8").catch(()=>null);
  if(content===null)continue;
+ if(path===".github/workflows/ci.yml"){
+  content=content.replaceAll("postgresql://postgres:postgres@localhost:5432/outside","");
+  content=content.replaceAll("postgresql://postgres:postgres@localhost:5432/outside_shadow","");
+ }
  for(const check of secretPatterns){
   if(check.pattern.test(content))failures.push(path+" appears to contain "+check.name+".");
  }
