@@ -35,5 +35,9 @@ export function ClipCard({clip,viewerId}:{clip:any;viewerId?:string}){
   }
  }
 
- return <article className="featureCard"><span className="eyebrow">OUTSiiDE Clip · from Live</span><h3>{clip.title||clip.room?.title||"Live clip"}</h3>{clip.mediaUrl?<video controls playsInline src={clip.mediaUrl} style={{width:"100%",maxWidth:640,borderRadius:16}}/>:<p>Clip media is processing.</p>}<p>From <a href={`/porch/${clip.room?.slug}`}>{clip.room?.title||"Live"}</a> · by <a href={`/u/${clip.creator?.username}`}>@{clip.creator?.username}</a></p>{viewerId!==clip.creatorId&&clip.creator?.username&&<><FollowButton username={clip.creator.username} initial={false}/><ProfileGiftTray username={clip.creator.username}/></>}<button onClick={like}>{liked?"♥":"♡"} {likes}</button><span> · {comments.length} comments</span>{viewerId&&<form onSubmit={comment}><input name="body" maxLength={500} placeholder="Comment on this clip" required/><button>Post</button></form>}{comments.slice(-20).map(x=><p key={x.id}><b>@{x.user.username}</b> {x.body}</p>)}</article>;
+ return <article className="featureCard"><span className="eyebrow">OUTSiiDE Clip · from Live</span><h3>{clip.title||clip.room?.title||"Live clip"}</h3>{clip.processingStatus==="FAILED"
+ ?<p>Clip processing failed.</p>
+ :clip.mediaUrl
+  ?<video controls playsInline src={clip.mediaUrl} style={{width:"100%",maxWidth:640,borderRadius:16}}/>
+  :<p>Clip media is processing.</p>}<p>From <a href={`/porch/${clip.room?.slug}`}>{clip.room?.title||"Live"}</a> · by <a href={`/u/${clip.creator?.username}`}>@{clip.creator?.username}</a></p>{viewerId!==clip.creatorId&&clip.creator?.username&&<><FollowButton username={clip.creator.username} initial={false}/><ProfileGiftTray username={clip.creator.username}/></>}<button onClick={like}>{liked?"♥":"♡"} {likes}</button><span> · {comments.length} comments</span>{viewerId&&<form onSubmit={comment}><input name="body" maxLength={500} placeholder="Comment on this clip" required/><button>Post</button></form>}{comments.slice(-20).map(x=><p key={x.id}><b>@{x.user.username}</b> {x.body}</p>)}</article>;
 }
