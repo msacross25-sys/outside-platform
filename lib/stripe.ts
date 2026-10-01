@@ -49,7 +49,7 @@ export async function createCheckoutSession(args:{
  coins:bigint;
  successUrl:string;
  cancelUrl:string;
-){
+}){
  if(stripeTestMode()){
   return {
    id:"cs_test_"+args.purchaseId,
