@@ -1,0 +1,12 @@
+FROM node:22-bookworm-slim
+WORKDIR /worker
+ENV NODE_ENV=production
+
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts
+
+COPY scripts/push-worker.mjs ./scripts/push-worker.mjs
+
+USER node
+
+CMD ["node","scripts/push-worker.mjs"]
