@@ -14,6 +14,7 @@ CREATE TABLE "CoinPurchase" (
     "provider" TEXT NOT NULL,
     "providerSessionId" TEXT,
     "providerPaymentId" TEXT,
+    "providerChargeId" TEXT,
     "amountCents" INTEGER NOT NULL,
     "currency" TEXT NOT NULL DEFAULT 'usd',
     "coins" BIGINT NOT NULL,
@@ -36,6 +37,9 @@ CREATE UNIQUE INDEX "CoinPurchase_providerSessionId_key" ON "CoinPurchase"("prov
 
 -- CreateIndex
 CREATE UNIQUE INDEX "CoinPurchase_providerPaymentId_key" ON "CoinPurchase"("providerPaymentId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "CoinPurchase_providerChargeId_key" ON "CoinPurchase"("providerChargeId");
 
 -- CreateIndex
 CREATE INDEX "CoinPurchase_userId_createdAt_idx" ON "CoinPurchase"("userId", "createdAt");
