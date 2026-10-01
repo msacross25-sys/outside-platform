@@ -1,3 +1,59 @@
-import {NextResponse} from "next/server";import {db} from "@/lib/db";import {currentUser} from "@/lib/session";import {canViewClip} from "@/lib/clipAccess";
-export async function GET(_:Request,{params}:{params:Promise<{id:string}>}){const {id}=await params,me=await currentUser();const clip=await db.clip.findUnique({where:{id},select:{creatorId:true,visibility:true}});if(!clip||!await canViewClip(clip,me?.id))return NextResponse.json({error:"Clip unavailable."},{status:404});const comments=await db.clipComment.findMany({where:{clipId:id},orderBy:{createdAt:"asc"},take:200,include:{user:{select:{username:true,displayName:true}}}});return NextResponse.json({comments})}
-export async function POST(request:Request,{params}:{params:Promise<{id:string}>}){const {id}=await params,me=await currentUser();if(!me)return NextResponse.json({error:"Sign in required."},{status:401});const clip=await db.clip.findUnique({where:{id},select:{id:true,creatorId:true,visibility:true}});if(!clip||!await canViewClip(clip,me.id))return NextResponse.json({error:"Clip unavailable."},{status:404});const b=await request.json().catch(()=>null),body=String(b?.body??"").trim();if(!body||body.length>500)return NextResponse.json({error:"Comment must be 1–500 characters."},{status:400});const comment=await db.clipComment.create({data:{clipId:id,userId:me.id,body},include:{user:{select:{username:true,displayName:true}}}});return NextResponse.json({comment},{status:201})}
+import {NextResponse} from "next/server";
+import {db} from "@/lib/db";
+import {currentUser} from "@/lib/session";
+import {canViewClip} from "@/lib/clipAccess";
+
+async function clipAccess(id:string){
+ return db.clip.findUnique({
+  where:{id},
+  select:{
+   id:true,
+   creatorId:true,
+   visibility:true,
+   creator:{select:{status:true}}
+  }
+ });
+}
+
+export async function GET(_:Request,{params}:{params:Promise<{id:string}>}){
+ const {id}=await params;
+ const me=await currentUser();
+ const clip=await clipAccess(id);
+
+ if(!clip||!await canViewClip(clip,me?.id)){
+  return NextResponse.json({error:"Clip unavailable."},{status:404});
+ }
+
+ const comments=await db.clipComment.findMany({
+  where:{clipId:id},
+  orderBy:{createdAt:"asc"},
+  take:200,
+  include:{user:{select:{username:true,displayName:true}}}
+ });
+
+ return NextResponse.json({comments});
+}
+
+export async function POST(request:Request,{params}:{params:Promise<{id:string}>}){
+ const {id}=await params;
+ const me=await currentUser();
+ if(!me)return NextResponse.json({error:"Sign in required."},{status:401});
+
+ const clip=await clipAccess(id);
+ if(!clip||!await canViewClip(clip,me.id)){
+  return NextResponse.json({error:"Clip unavailable."},{status:404});
+ }
+
+ const data=await request.json().catch(()=>null);
+ const body=String(data?.body??"").trim();
+ if(!body||body.length>500){
+  return NextResponse.json({error:"Comment must be 1–500 characters."},{status:400});
+ }
+
+ const comment=await db.clipComment.create({
+  data:{clipId:id,userId:me.id,body},
+  include:{user:{select:{username:true,displayName:true}}}
+ });
+
+ return NextResponse.json({comment},{status:201});
+}
