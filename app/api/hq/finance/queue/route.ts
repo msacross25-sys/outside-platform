@@ -94,7 +94,6 @@ export async function GET(request:Request){
 
   if(available<MINIMUM_PAYOUT_CENTS&&!open)continue;
 
-  const application=user.hostApplication;
   queue.push({
    creator:user,
    availableCents:available,
