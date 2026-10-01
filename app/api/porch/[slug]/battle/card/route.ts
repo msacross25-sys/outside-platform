@@ -11,7 +11,7 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
 
  const body=await request.json().catch(()=>null);
  const card=String(body?.card??"");
- if(card!=="DOUBLE_POINT")return NextResponse.json({error:"Unsupported battle card."},{status:400});
+ if(!["DOUBLE_POINT","SHIELD"].includes(card))return NextResponse.json({error:"Unsupported battle card."},{status:400});
 
  const room=await db.porchRoom.findUnique({where:{slug},select:{id:true,status:true}});
  if(!room||room.status!=="LIVE")return NextResponse.json({error:"Live room not found."},{status:404});
@@ -26,15 +26,63 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
  const team=battle.teams.find(item=>item.memberIds.includes(me.id));
  if(!team)return NextResponse.json({error:"Only active battle participants can use battle cards."},{status:403});
 
- const now=new Date();
- if(team.multiplierExpiresAt&&team.multiplierExpiresAt>now&&team.activeMultiplier>1){
-  return NextResponse.json({error:"A Double-Point Card is already active for your side."},{status:409});
+ if(card==="DOUBLE_POINT"){
+  const now=new Date();
+  if(team.multiplierExpiresAt&&team.multiplierExpiresAt>now&&team.activeMultiplier>1){
+   return NextResponse.json({error:"A Double-Point Card is already active for your side."},{status:409});
+  }
+
+  try{
+   const result=await db.$transaction(async tx=>{
+    const inventory=await tx.battleRewardLedger.findFirst({
+     where:{userId:me.id,currency:"CARD_DOUBLE_POINT",status:"AVAILABLE",amount:{gt:0}},
+     orderBy:{createdAt:"asc"}
+    });
+    if(!inventory)throw new Error("NO_CARD");
+
+    if(inventory.amount===1){
+     await tx.battleRewardLedger.update({where:{id:inventory.id},data:{status:"CLAIMED"}});
+    }else{
+     await tx.battleRewardLedger.update({where:{id:inventory.id},data:{amount:{decrement:1}}});
+    }
+
+    const expiresAt=new Date(Date.now()+DOUBLE_POINT_SECONDS*1000);
+    await tx.battleTeam.update({
+     where:{id:team.id},
+     data:{activeMultiplier:2,multiplierExpiresAt:expiresAt}
+    });
+
+    await tx.battleRewardLedger.create({
+     data:{
+      userId:me.id,
+      battleId:battle.id,
+      kind:"BATTLE_CARD_USED",
+      currency:"CARD_DOUBLE_POINT",
+      amount:1,
+      status:"CLAIMED",
+      metadataJson:JSON.stringify({card:"DOUBLE_POINT",side:team.side,expiresAt:expiresAt.toISOString()})
+     }
+    });
+
+    return {side:team.side,expiresAt};
+   },{isolationLevel:"Serializable"});
+
+   return NextResponse.json({card:"DOUBLE_POINT",...result});
+  }catch(error){
+   if(error instanceof Error&&error.message==="NO_CARD")return NextResponse.json({error:"No Double-Point Card is available."},{status:409});
+   return NextResponse.json({error:"Battle card could not be activated."},{status:409});
+  }
  }
 
+ const existingShield=await db.battleRewardLedger.findFirst({
+  where:{userId:me.id,battleId:battle.id,kind:"BATTLE_CARD_USED",currency:"CARD_SHIELD"}
+ });
+ if(existingShield)return NextResponse.json({error:"A Shield Card is already active for this match."},{status:409});
+
  try{
-  const result=await db.$transaction(async tx=>{
+  await db.$transaction(async tx=>{
    const inventory=await tx.battleRewardLedger.findFirst({
-    where:{userId:me.id,currency:"CARD_DOUBLE_POINT",status:"AVAILABLE",amount:{gt:0}},
+    where:{userId:me.id,currency:"CARD_SHIELD",status:"AVAILABLE",amount:{gt:0}},
     orderBy:{createdAt:"asc"}
    });
    if(!inventory)throw new Error("NO_CARD");
@@ -45,30 +93,22 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
     await tx.battleRewardLedger.update({where:{id:inventory.id},data:{amount:{decrement:1}}});
    }
 
-   const expiresAt=new Date(Date.now()+DOUBLE_POINT_SECONDS*1000);
-   await tx.battleTeam.update({
-    where:{id:team.id},
-    data:{activeMultiplier:2,multiplierExpiresAt:expiresAt}
-   });
-
    await tx.battleRewardLedger.create({
     data:{
      userId:me.id,
      battleId:battle.id,
      kind:"BATTLE_CARD_USED",
-     currency:"CARD_DOUBLE_POINT",
+     currency:"CARD_SHIELD",
      amount:1,
      status:"CLAIMED",
-     metadataJson:JSON.stringify({side:team.side,expiresAt:expiresAt.toISOString()})
+     metadataJson:JSON.stringify({card:"SHIELD",side:team.side})
     }
    });
-
-   return {side:team.side,expiresAt};
   },{isolationLevel:"Serializable"});
 
-  return NextResponse.json({card:"DOUBLE_POINT",...result});
+  return NextResponse.json({card:"SHIELD",side:team.side,protected:true});
  }catch(error){
-  if(error instanceof Error&&error.message==="NO_CARD")return NextResponse.json({error:"No Double-Point Card is available."},{status:409});
-  return NextResponse.json({error:"Battle card could not be activated."},{status:409});
+  if(error instanceof Error&&error.message==="NO_CARD")return NextResponse.json({error:"No Shield Card is available."},{status:409});
+  return NextResponse.json({error:"Shield Card could not be activated."},{status:409});
  }
 }
