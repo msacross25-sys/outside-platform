@@ -92,9 +92,11 @@ export function BattleRewardCenter(){
   <div className="featureCard">
    <h3>Reward Balances</h3>
    <p>💎 Gems: {(data.balances?.GEM??0).toLocaleString()}</p>
+   <p>🔷 Diamonds: {(data.balances?.DIAMOND??0).toLocaleString()}</p>
    <p>⚔️ Battle Tokens: {(data.balances?.BATTLE_TOKEN??0).toLocaleString()}</p>
    <p>🃏 Double-Point Cards: {(data.balances?.CARD_DOUBLE_POINT??0).toLocaleString()}</p>
    <p>🛡️ Shield Cards: {(data.balances?.CARD_SHIELD??0).toLocaleString()}</p>
+   <p>🔁 Rematch Cards: {(data.balances?.CARD_REMATCH??0).toLocaleString()}</p>
   </div>
 
   <div className="featureCard">
