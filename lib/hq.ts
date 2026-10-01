@@ -13,3 +13,7 @@ export function canModerate(role:string){
 export function canManageHosts(role:string){
  return ["OWNER","CO_OWNER"].includes(role);
 }
+
+export function canSupport(role:string){
+ return ["OWNER","CO_OWNER","EXECUTIVE_ADMIN","SUPPORT"].includes(role);
+}
