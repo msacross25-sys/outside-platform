@@ -1,4 +1,5 @@
 import {db} from "@/lib/db";
+import {TERRITORY_DAILY_BATTLE_TOKENS} from "@/lib/battles";
 
 function mondayUtc(date:Date){
  const day=(date.getUTCDay()+6)%7;
@@ -32,7 +33,68 @@ async function alreadyAwarded(kind:string,key:string){
 }
 
 export async function runBattleRollups(now=new Date()){
- const results:{weekly?:any;monthly?:any;season?:any}={};
+ const results:{territories?:any;weekly?:any;monthly?:any;season?:any}={};
+
+ // Daily Kingdom territory rewards.
+ const todayKey=keyDate(now);
+ const currentSeason=quarterKey(now);
+ const territories=await db.battleTerritory.findMany({
+  where:{seasonKey:currentSeason,holderGuildId:{not:null}},
+  include:{
+   holderGuild:{
+    include:{members:{select:{userId:true}}}
+   }
+  }
+ });
+ let territoryAwards=0;
+
+ for(const territory of territories){
+  if(!territory.holderGuildId||!territory.holderGuild)continue;
+  const marker=await db.battleRewardLedger.findFirst({
+   where:{
+    kind:"TERRITORY_DAILY_ROLLUP",
+    metadataJson:{contains:'"territoryId":"'+territory.id+'"'},
+    AND:{metadataJson:{contains:'"periodKey":"'+todayKey+'"'}}
+   }
+  });
+  if(marker)continue;
+
+  await db.$transaction(async tx=>{
+   for(const member of territory.holderGuild!.members){
+    await tx.battleRewardLedger.create({
+     data:{
+      userId:member.userId,
+      kind:"TERRITORY_DAILY_REWARD",
+      currency:"BATTLE_TOKEN",
+      amount:TERRITORY_DAILY_BATTLE_TOKENS,
+      status:"AVAILABLE",
+      metadataJson:JSON.stringify({
+       territoryId:territory.id,
+       regionCode:territory.regionCode,
+       periodKey:todayKey,
+       guildId:territory.holderGuildId
+      })
+     }
+    });
+   }
+   await tx.battleRewardLedger.create({
+    data:{
+     kind:"TERRITORY_DAILY_ROLLUP",
+     currency:"MARKER",
+     amount:0,
+     status:"CLAIMED",
+     metadataJson:JSON.stringify({
+      territoryId:territory.id,
+      regionCode:territory.regionCode,
+      periodKey:todayKey,
+      guildId:territory.holderGuildId
+     })
+    }
+   });
+  });
+  territoryAwards++;
+ }
+ results.territories={periodKey:todayKey,territoriesAwarded:territoryAwards};
 
  // Previous completed week.
  const currentWeek=mondayUtc(now);
