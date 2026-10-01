@@ -17,6 +17,7 @@ export function liveRecordingReady(){
   process.env.LIVEKIT_URL&&
   process.env.LIVEKIT_API_KEY&&
   process.env.LIVEKIT_API_SECRET&&
+  process.env.NEXT_PUBLIC_APP_URL&&
   process.env.MEDIA_S3_ENDPOINT&&
   process.env.MEDIA_S3_BUCKET&&
   process.env.MEDIA_S3_ACCESS_KEY_ID&&
@@ -30,6 +31,12 @@ export function replayObjectKey(roomId:string){
 
 export function replayMediaPath(slug:string){
  return "/api/porch/"+encodeURIComponent(slug)+"/replay-media";
+}
+
+function webhookUrl(){
+ const base=process.env.NEXT_PUBLIC_APP_URL;
+ if(!base)throw new Error("NEXT_PUBLIC_APP_URL is not configured.");
+ return new URL("/api/webhooks/livekit",base).toString();
 }
 
 function egressClient(){
@@ -48,7 +55,6 @@ function output(roomId:string){
 
  return new EncodedFileOutput({
   filepath:replayObjectKey(roomId),
-  disableManifest:true,
   output:{
    case:"s3",
    value:new S3Upload({
@@ -58,8 +64,7 @@ function output(roomId:string){
     region:process.env.MEDIA_S3_REGION||"auto",
     endpoint,
     bucket,
-    forcePathStyle:true,
-    contentDisposition:"inline"
+    forcePathStyle:true
    })
   }
  });
@@ -72,10 +77,18 @@ export async function startLiveRecording(roomId:string,roomType:"VIDEO"|"VOICE")
  }
  if(!liveRecordingReady())throw new Error("Live recording is not configured.");
 
+ const {apiKey}=livekitCredentials();
+
  return egressClient().startRoomCompositeEgress(
   livekitRoomName(roomId),
-  output(roomId),
-  {audioOnly:roomType==="VOICE"}
+  {file:output(roomId)},
+  {
+   audioOnly:roomType==="VOICE",
+   webhooks:[{
+    url:webhookUrl(),
+    signingKey:apiKey
+   }]
+  }
  );
 }
 
@@ -85,7 +98,10 @@ export async function stopLiveRecording(roomId:string){
  if(!liveRecordingReady())throw new Error("Live recording is not configured.");
 
  const client=egressClient();
- const active=await client.listEgress({roomName:livekitRoomName(roomId),active:true});
+ const active=await client.listEgress({
+  roomName:livekitRoomName(roomId),
+  active:true
+ });
  const results=[];
  for(const item of active){
   results.push(await client.stopEgress(item.egressId));
