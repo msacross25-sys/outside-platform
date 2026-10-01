@@ -1,6 +1,8 @@
 import {db} from "@/lib/db";
 import {
  BATTLE_WINNER_FEATURE_HOURS,
+ BATTLE_REWARD_POOL_WINNER_PERCENT,
+ BATTLE_REWARD_POOL_WEEKLY_PERCENT,
  WIN_STREAK_REWARDS,
  battleRankFor,
  winnerRankingPoints
@@ -153,7 +155,11 @@ export async function finalizeBattle(battleId:string,endedAt=new Date()){
 
   if(winnerSide&&battle.rewardPoolCents>0){
    const winners=(winnerSide===1?side1:side2).memberIds;
-   const payouts=splitAmount(battle.rewardPoolCents,winners);
+   const winnerPool=Math.floor(battle.rewardPoolCents*BATTLE_REWARD_POOL_WINNER_PERCENT/100);
+   const weeklyPool=Math.floor(battle.rewardPoolCents*BATTLE_REWARD_POOL_WEEKLY_PERCENT/100);
+   const seasonPool=battle.rewardPoolCents-winnerPool-weeklyPool;
+   const payouts=splitAmount(winnerPool,winners);
+
    for(const [userId,amountCents] of payouts){
     if(amountCents<=0)continue;
     await tx.battleEarning.create({
@@ -183,6 +189,29 @@ export async function finalizeBattle(battleId:string,endedAt=new Date()){
       currency:"SPIN",
       amount:1,
       status:"AVAILABLE"
+     }
+    });
+   }
+
+   if(weeklyPool>0){
+    await tx.battleRewardLedger.create({
+     data:{
+      battleId:battle.id,
+      kind:"WEEKLY_JACKPOT_RESERVE",
+      currency:"CASH_CENTS",
+      amount:weeklyPool,
+      status:"RESERVED"
+     }
+    });
+   }
+   if(seasonPool>0){
+    await tx.battleRewardLedger.create({
+     data:{
+      battleId:battle.id,
+      kind:"SEASON_CHAMPIONSHIP_RESERVE",
+      currency:"CASH_CENTS",
+      amount:seasonPool,
+      status:"RESERVED"
      }
     });
    }
