@@ -29,7 +29,7 @@ export async function GET(){
  }
 
  return NextResponse.json({
-  profile:profile?{...profile,rankingPoints:profile.rankingPoints.toString(),lifetimeBattlePoints:profile.lifetimeBattlePoints.toString(),lifetimeGiftValueCents:profile.lifetimeGiftValueCents.toString()}:null,
+  profile:profile?{...profile,rankingPoints:profile.rankingPoints.toString(),lifetimeBattlePoints:profile.lifetimeBattlePoints.toString(),lifetimeGiftValueCents:profile.lifetimeGiftValueCents.toString(),vipActive:!!profile.vipUntil&&profile.vipUntil>new Date()}:null,
   battlePass:pass?{...pass,level}:null,
   badges,
   wheelSpins:spins,
