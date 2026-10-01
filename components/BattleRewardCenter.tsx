@@ -14,6 +14,26 @@ export function BattleRewardCenter(){
 
  useEffect(()=>{void load()},[]);
 
+ async function chooseTitle(title:"BATTLE_KING"|"QUEEN_OF_BATTLES"){
+  setMessage("");
+  const response=await fetch("/api/battles/title",{
+   method:"PATCH",
+   headers:{"content-type":"application/json"},
+   body:JSON.stringify({title})
+  });
+  const result=await response.json();
+  setMessage(response.ok?"👑 Battle title updated.":result.error??"Unable to update title.");
+  if(response.ok)await load();
+ }
+
+ async function clearTitle(){
+  setMessage("");
+  const response=await fetch("/api/battles/title",{method:"DELETE"});
+  const result=await response.json();
+  setMessage(response.ok?"Battle title cleared.":result.error??"Unable to clear title.");
+  if(response.ok)await load();
+ }
+
  async function spin(){
   if(busy)return;
   setBusy(true);setMessage("");
@@ -60,6 +80,14 @@ export function BattleRewardCenter(){
    <button type="button" onClick={spin} disabled={busy||data.wheelSpins<1}>{busy?"Spinning…":"Spin Winner’s Wheel"}</button>
    <small>Wheel rewards are platform rewards only; random cash prizes are not enabled.</small>
   </div>
+
+  {(profile?.wins??0)>=25&&<div className="featureCard">
+   <h3>Royal Battle Title</h3>
+   <p>Choose how your unlocked royal title appears on OUTSiiDE.</p>
+   <button type="button" onClick={()=>chooseTitle("BATTLE_KING")} aria-pressed={profile?.selectedTitle==="BATTLE_KING"}>👑 Battle King</button>
+   <button type="button" onClick={()=>chooseTitle("QUEEN_OF_BATTLES")} aria-pressed={profile?.selectedTitle==="QUEEN_OF_BATTLES"}>👑 Queen of Battles</button>
+   {profile?.selectedTitle&&<button type="button" onClick={clearTitle}>Clear Title</button>}
+  </div>}
 
   <div className="featureCard">
    <h3>Reward Balances</h3>
