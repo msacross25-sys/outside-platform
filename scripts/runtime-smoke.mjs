@@ -490,6 +490,39 @@ async function main(){
  const replayNotifications=await db.notification.count({where:{recipientId:host.id,type:"REPLAY_READY"}});
  expect(replayNotifications===1,"Replay ready notification count was incorrect",{count:replayNotifications});
 
+ console.log("11b. clip privacy and block enforcement");
+ const safetyClip=await db.clip.create({
+  data:{
+   creatorId:host.id,
+   roomId:roomCreate.data.room.id,
+   replayId:replay.id,
+   title:"Runtime safety clip",
+   startSeconds:0,
+   endSeconds:1,
+   visibility:"PUBLIC"
+  }
+ });
+
+ const clipVisible=await request("/api/clips/"+safetyClip.id,{cookie:charlieCookie});
+ expect(clipVisible.response.status===200,"Public clip was not visible before block",clipVisible.data);
+
+ const clipCommentsVisible=await request("/api/clips/"+safetyClip.id+"/comments",{cookie:charlieCookie});
+ expect(clipCommentsVisible.response.status===200,"Public clip comments were not visible before block",clipCommentsVisible.data);
+
+ const roomClipsVisible=await request("/api/porch/"+slug+"/clips",{cookie:charlieCookie});
+ expect(roomClipsVisible.response.status===200&&roomClipsVisible.data?.clips?.some(x=>x.id===safetyClip.id),"Public clip was missing from room listing",roomClipsVisible.data);
+
+ await db.block.create({data:{blockerId:charlie.id,blockedId:host.id}});
+
+ const clipBlocked=await request("/api/clips/"+safetyClip.id,{cookie:charlieCookie});
+ expect(clipBlocked.response.status===404,"Blocked creator clip metadata remained visible",clipBlocked.data);
+
+ const clipCommentsBlocked=await request("/api/clips/"+safetyClip.id+"/comments",{cookie:charlieCookie});
+ expect(clipCommentsBlocked.response.status===404,"Blocked creator clip comments remained visible",clipCommentsBlocked.data);
+
+ const roomClipsBlocked=await request("/api/porch/"+slug+"/clips",{cookie:charlieCookie});
+ expect(roomClipsBlocked.response.status===200&&!roomClipsBlocked.data?.clips?.some(x=>x.id===safetyClip.id),"Blocked creator clip remained in room listing",roomClipsBlocked.data);
+
  const deleteReplay=await request("/api/porch/"+slug+"/replay",{method:"PATCH",cookie:hostCookie,body:{status:"DELETED"}});
  expect(deleteReplay.response.status===200&&deleteReplay.data?.replay?.status==="DELETED","Host could not delete replay",deleteReplay.data);
 
