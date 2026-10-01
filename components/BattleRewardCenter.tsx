@@ -1,6 +1,6 @@
 "use client";
 import {useEffect,useState} from "react";
-import {BATTLE_PASS_REWARDS} from "@/lib/battleRewards";
+import {BATTLE_PASS_REWARDS} from "@/lib/battleRewardCatalog";
 
 export function BattleRewardCenter(){
  const [data,setData]=useState<any>(null);
