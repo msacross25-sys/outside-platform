@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {Shell} from "@/components/Shell";
 import {BattleRewardCenter} from "@/components/BattleRewardCenter";
+import {BattleCosmeticLoadout} from "@/components/BattleCosmeticLoadout";
 
 export default function BattleRewardsPage(){
  return <Shell><section className="page">
@@ -8,6 +9,6 @@ export default function BattleRewardsPage(){
   <h1>Win. Unlock. Level up.</h1>
   <p className="lede">Ranks, streaks, Battle Pass XP, Winner’s Wheel spins, Gems, Battle Tokens, cosmetics and achievement rewards.</p>
   <div className="heroButtons"><Link className="ghostButton" href="/battles">Back to Battles</Link></div>
-  <BattleRewardCenter/>
+  <BattleRewardCenter/><BattleCosmeticLoadout/>
  </section></Shell>;
 }
