@@ -14,7 +14,7 @@ export async function POST(_:Request,{params}:{params:Promise<{id:string}>}){
  if(!tournament)return NextResponse.json({error:"Tournament not found."},{status:404});
  if(tournament.ownerId!==me.id)return NextResponse.json({error:"Only the tournament owner can start it."},{status:403});
  if(tournament.status!=="REGISTRATION")return NextResponse.json({error:"Tournament has already started or ended."},{status:409});
- if(tournament.entries.length<2)return NextResponse.json({error:"At least 2 entrants are required."},{status:409});
+ if(tournament.entries.length!==tournament.bracketSize)return NextResponse.json({error:`Tournament bracket must be full before starting (${tournament.entries.length}/${tournament.bracketSize}).`},{status:409});
 
  await db.$transaction(async tx=>{
   for(let i=0;i<tournament.entries.length;i++){
