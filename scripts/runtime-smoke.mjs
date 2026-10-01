@@ -418,11 +418,38 @@ async function main(){
  const join=await request("/api/porch/"+slug+"/join",{method:"POST",cookie:charlieCookie});
  expect(join.response.status===200&&join.data?.joined===true,"Viewer could not join public Live",join.data);
 
+ const provider=await request("/api/live/provider",{cookie:charlieCookie});
+ expect(provider.response.status===200&&provider.data?.provider==="livekit"&&provider.data?.ready===true,"LiveKit provider was not ready",provider.data);
+
+ const hostLiveToken=await request("/api/porch/"+slug+"/livekit-token",{method:"POST",cookie:hostCookie});
+ expect(hostLiveToken.response.status===200&&hostLiveToken.data?.canPublish===true&&hostLiveToken.data?.canSubscribe===true,"Host LiveKit token did not receive publish permission",hostLiveToken.data);
+
+ const listenerToken=await request("/api/porch/"+slug+"/livekit-token",{method:"POST",cookie:charlieCookie});
+ expect(listenerToken.response.status===200&&listenerToken.data?.canPublish===false&&listenerToken.data?.canSubscribe===true,"Listener LiveKit token received incorrect permissions",listenerToken.data);
+
+ const stageRequest=await request("/api/porch/"+slug+"/stage",{method:"POST",cookie:charlieCookie});
+ expect(stageRequest.response.status===201,"Listener could not request stage",stageRequest.data);
+
+ const stageApprove=await request("/api/porch/"+slug+"/stage",{method:"PATCH",cookie:hostCookie,body:{userId:charlie.id,action:"APPROVE"}});
+ expect(stageApprove.response.status===200&&stageApprove.data?.role==="SPEAKER","Host could not approve stage request",stageApprove.data);
+
+ const speakerToken=await request("/api/porch/"+slug+"/livekit-token",{method:"POST",cookie:charlieCookie});
+ expect(speakerToken.response.status===200&&speakerToken.data?.canPublish===true,"Approved speaker did not receive LiveKit publish permission",speakerToken.data);
+
+ const stageRemove=await request("/api/porch/"+slug+"/stage",{method:"PATCH",cookie:hostCookie,body:{userId:charlie.id,action:"REMOVE"}});
+ expect(stageRemove.response.status===200&&stageRemove.data?.role==="LISTENER","Host could not remove speaker from stage",stageRemove.data);
+
+ const listenerTokenAgain=await request("/api/porch/"+slug+"/livekit-token",{method:"POST",cookie:charlieCookie});
+ expect(listenerTokenAgain.response.status===200&&listenerTokenAgain.data?.canPublish===false,"Removed speaker retained LiveKit publish permission",listenerTokenAgain.data);
+
  const ban=await request("/api/porch/"+slug+"/moderate",{method:"POST",cookie:hostCookie,body:{userId:charlie.id,action:"BAN"}});
  expect(ban.response.status===200&&ban.data?.banned===true,"Host ban failed",ban.data);
 
  const rejoinDenied=await request("/api/porch/"+slug+"/join",{method:"POST",cookie:charlieCookie});
  expect(rejoinDenied.response.status===403,"Banned viewer was able to rejoin",rejoinDenied.data);
+
+ const bannedToken=await request("/api/porch/"+slug+"/livekit-token",{method:"POST",cookie:charlieCookie});
+ expect(bannedToken.response.status===403,"Banned viewer received a new LiveKit token",bannedToken.data);
 
  const bans=await request("/api/porch/"+slug+"/bans",{cookie:hostCookie});
  expect(bans.response.status===200&&bans.data?.banned?.some(x=>x.userId===charlie.id),"Host ban list missing banned viewer",bans.data);
