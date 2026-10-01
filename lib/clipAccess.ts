@@ -3,12 +3,14 @@ import {db} from "@/lib/db";
 type ClipAccessShape={
  creatorId:string;
  visibility:string;
+ processingStatus?:string|null;
  creator?:{status:string}|null;
 };
 
 export async function canViewClip(clip:ClipAccessShape,viewerId?:string|null){
  if(clip.creator?.status&&clip.creator.status!=="ACTIVE")return false;
  if(viewerId===clip.creatorId)return true;
+ if(clip.processingStatus&&clip.processingStatus!=="READY")return false;
  if(!viewerId)return clip.visibility==="PUBLIC";
 
  const [blocked,muted,follows]=await Promise.all([
@@ -35,7 +37,7 @@ export async function filterViewableClips<T extends ClipAccessShape>(clips:T[],v
  const active=clips.filter(clip=>!clip.creator?.status||clip.creator.status==="ACTIVE");
 
  if(!viewerId){
-  return active.filter(clip=>clip.visibility==="PUBLIC");
+  return active.filter(clip=>clip.visibility==="PUBLIC"&&(!clip.processingStatus||clip.processingStatus==="READY"));
  }
 
  const creatorIds=[...new Set(active.map(clip=>clip.creatorId).filter(id=>id!==viewerId))];
@@ -68,6 +70,7 @@ export async function filterViewableClips<T extends ClipAccessShape>(clips:T[],v
 
  return active.filter(clip=>{
   if(clip.creatorId===viewerId)return true;
+  if(clip.processingStatus&&clip.processingStatus!=="READY")return false;
   if(blockedIds.has(clip.creatorId)||mutedIds.has(clip.creatorId))return false;
   if(clip.visibility==="PUBLIC")return true;
   if(clip.visibility==="FOLLOWERS")return followedIds.has(clip.creatorId);
