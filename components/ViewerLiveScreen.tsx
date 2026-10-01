@@ -14,6 +14,6 @@ export function ViewerLiveScreen({room,meId,myRole,hostId}:{room:any;meId:string
   <PorchStageManager slug={room.slug} members={room.members} role={myRole} stageSize={room.stageSize}/>
   <VerifiedViewingTracker slug={room.slug} status={room.status} host={false}/>
   {room.status==="LIVE"&&myRole&&<LiveChat slug={room.slug} role={myRole}/>}
-  <GiftTray slug={room.slug} canGift={!!myRole&&room.status==="LIVE"}/>
+  <GiftTray slug={room.slug} canGift={!!myRole&&room.status==="LIVE"&&room.giftsEnabled}/>
  </section>
 }
