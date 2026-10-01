@@ -670,6 +670,12 @@ async function main(){
  expect(replayNotifications===1,"Replay ready notification count was incorrect",{count:replayNotifications});
 
  console.log("11b. durable clip processing");
+ if((replay?.durationSeconds??0)<2){
+  await db.liveReplay.update({
+   where:{roomId:roomCreate.data.room.id},
+   data:{durationSeconds:5}
+  });
+ }
  const clipCreate=await request("/api/porch/"+slug+"/clips",{
   method:"POST",
   cookie:hostCookie,
