@@ -8,7 +8,7 @@ export async function GET(){
  const me=await currentUser();
  if(!me)return NextResponse.json({error:"Sign in required."},{status:401});
 
- const [profile,pass,badges,spins,balances,recent]=await Promise.all([
+ const [profile,pass,badges,spins,balances,recent,passClaims]=await Promise.all([
   db.battleProfile.findUnique({where:{userId:me.id}}),
   db.battlePassProgress.findUnique({where:{userId:me.id}}),
   db.userBadge.findMany({where:{userId:me.id,key:{startsWith:"BATTLE"}},orderBy:{unlockedAt:"desc"},take:30}),
@@ -18,7 +18,8 @@ export async function GET(){
    where:{userId:me.id,status:"AVAILABLE",currency:{in:["BATTLE_TOKEN","GEM","CARD_DOUBLE_POINT"]}},
    _sum:{amount:true}
   }),
-  db.battleRewardLedger.findMany({where:{userId:me.id},orderBy:{createdAt:"desc"},take:20})
+  db.battleRewardLedger.findMany({where:{userId:me.id},orderBy:{createdAt:"desc"},take:20}),
+  db.battleRewardLedger.findMany({where:{userId:me.id,kind:{startsWith:"BATTLE_PASS_"},status:"CLAIMED"},select:{kind:true}})
  ]);
 
  const xp=pass?.freeXp??0;
@@ -33,7 +34,8 @@ export async function GET(){
   badges,
   wheelSpins:spins,
   balances:Object.fromEntries(balances.map(row=>[row.currency,row._sum.amount??0])),
-  recent
+  recent,
+  passClaims:passClaims.map(row=>row.kind)
  });
 }
 
