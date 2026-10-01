@@ -20,7 +20,7 @@ export function BattleCenter({slug,members,host,status,meId}:{slug:string;member
  const [lastResult,setLastResult]=useState<Battle|null>(null);
  const [endsAt,setEndsAt]=useState<string|null>(null);
  const [surgeStartsAt,setSurgeStartsAt]=useState<string|null>(null);
- const [now,setNow]=useState(Date.now());
+ const [now,setNow]=useState<number>(0);
  const [mode,setMode]=useState("ONE_V_ONE");
  const [theme,setTheme]=useState<string>(BATTLE_THEMES[0].key);
  const [duration,setDuration]=useState<number>(5);
@@ -36,6 +36,7 @@ export function BattleCenter({slug,members,host,status,meId}:{slug:string;member
   const response=await fetch(`/api/porch/${slug}/battle`,{cache:"no-store"});
   if(!response.ok)return;
   const data:BattleResponse=await response.json();
+  setNow(Date.now());
   if(data.expired&&data.battle){
    setLastResult(data.battle);
    setBattle(null);
@@ -78,7 +79,7 @@ export function BattleCenter({slug,members,host,status,meId}:{slug:string;member
   const next=mine.includes(userId)?mine.filter(id=>id!==userId):[...mine,userId];
   if(next.length>MAX_BATTLE_TEAM_SIZE){setMessage("Each side can have up to 5 people.");return}
   setMessage("");
-  side==="left"?setLeft(next):setRight(next);
+  if(side==="left")setLeft(next);else setRight(next);
  }
 
  async function start(){
