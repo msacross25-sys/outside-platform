@@ -4,10 +4,19 @@ import {currentUser} from "@/lib/session";
 import {isAtLeast18} from "@/lib/age";
 import {coinPackageByKey} from "@/lib/coinPackages";
 import {createCheckoutSession} from "@/lib/stripe";
+import {checkActionLimit} from "@/lib/actionLimit";
 
 export async function POST(request:Request){
  const me=await currentUser();
  if(!me)return NextResponse.json({error:"Sign in required."},{status:401});
+
+ const limit=await checkActionLimit(request,"coin-checkout",me.id,5,60_000);
+ if(!limit.allowed){
+  return NextResponse.json(
+   {error:limit.unavailable?"Checkout is temporarily unavailable.":"Too many checkout attempts. Try again shortly."},
+   {status:limit.unavailable?503:429,headers:{"Retry-After":String(limit.retryAfterSeconds)}}
+  );
+ }
 
  const user=await db.user.findUnique({
   where:{id:me.id},
