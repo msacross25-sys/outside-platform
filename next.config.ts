@@ -9,7 +9,26 @@ const headers=[
 ];
 
 if(process.env.NODE_ENV==="production"){
- headers.push({key:"Strict-Transport-Security",value:"max-age=31536000; includeSubDomains"});
+ headers.push(
+  {key:"Strict-Transport-Security",value:"max-age=31536000; includeSubDomains"},
+  {key:"Cross-Origin-Opener-Policy",value:"same-origin"},
+  {key:"Cross-Origin-Resource-Policy",value:"same-origin"},
+  {key:"Content-Security-Policy",value:[
+   "default-src 'self'",
+   "base-uri 'self'",
+   "object-src 'none'",
+   "frame-ancestors 'none'",
+   "form-action 'self'",
+   "script-src 'self' 'unsafe-inline'",
+   "style-src 'self' 'unsafe-inline'",
+   "img-src 'self' data: blob: https:",
+   "media-src 'self' blob: https:",
+   "connect-src 'self' https: wss:",
+   "font-src 'self' data:",
+   "worker-src 'self' blob:",
+   "upgrade-insecure-requests"
+  ].join("; ")}
+ );
 }
 
 const nextConfig:NextConfig={
