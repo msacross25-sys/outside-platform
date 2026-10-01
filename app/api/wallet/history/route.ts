@@ -6,7 +6,7 @@ export async function GET(){
  const me=await currentUser();
  if(!me)return NextResponse.json({error:"Sign in required."},{status:401});
 
- const [purchases,gifts,payouts]=await Promise.all([
+ const [purchases,gifts,battleEarnings,payouts]=await Promise.all([
   db.coinPurchase.findMany({
    where:{userId:me.id},
    orderBy:{createdAt:"desc"},
@@ -25,10 +25,16 @@ export async function GET(){
    }
   }),
   db.giftTransaction.findMany({
-   where:{recipientId:me.id},
+   where:{recipientId:me.id,battleId:null},
    orderBy:{createdAt:"desc"},
    take:50,
    select:{id:true,giftName:true,creatorShareCents:true,status:true,createdAt:true,refundStatus:true}
+  }),
+  db.battleEarning.findMany({
+   where:{userId:me.id},
+   orderBy:{createdAt:"desc"},
+   take:75,
+   select:{id:true,kind:true,amountCents:true,status:true,createdAt:true,settledAt:true,battleId:true,giftTransactionId:true}
   }),
   db.creatorPayout.findMany({
    where:{creatorId:me.id},
@@ -41,6 +47,7 @@ export async function GET(){
  return NextResponse.json({
   purchases:purchases.map(row=>({...row,coins:row.coins.toString(),reversedCoins:row.reversedCoins.toString()})),
   gifts,
+  battleEarnings,
   payouts
  });
 }
