@@ -4,6 +4,7 @@ import {livekitEnabled,liveMediaProvider} from "@/lib/livekit";
 import {liveRecordingMode,liveRecordingReady,liveRecordingTestMode} from "@/lib/liveRecording";
 import {redisHealth} from "@/lib/redis";
 import {stripePaymentsReady,stripeTestMode} from "@/lib/stripe";
+import {pushWorkerReady,webPushReady} from "@/lib/pushDelivery";
 
 export type ReadinessCheck={
  ok:boolean;
@@ -23,6 +24,7 @@ export type RuntimeReadiness={
   liveRecording:ReadinessCheck;
   scaleCache:ReadinessCheck;
   payments:ReadinessCheck;
+  pushNotifications:ReadinessCheck;
   appUrl:ReadinessCheck;
  };
 };
@@ -112,6 +114,14 @@ function paymentsCheck(strict:boolean):ReadinessCheck{
   :{ok:false,message:"Stripe checkout/webhook configuration is incomplete."};
 }
 
+function pushNotificationsCheck(strict:boolean):ReadinessCheck{
+ if(!strict&&process.env.WEB_PUSH_TEST_MODE==="true")return {ok:true};
+ if(!webPushReady())return {ok:false,message:"Web Push VAPID or encryption configuration is incomplete."};
+ if(!pushWorkerReady())return {ok:false,message:"Push worker secret is missing or too short."};
+ if(!validMfaKey(process.env.PUSH_ENCRYPTION_KEY))return {ok:false,message:"Push subscription encryption key is missing or invalid."};
+ return {ok:true};
+}
+
 async function scaleCacheCheck():Promise<ReadinessCheck>{
  return await redisHealth()?{ok:true}:{ok:false,message:"Redis scale cache is unavailable."};
 }
@@ -157,6 +167,7 @@ export async function runtimeReadiness():Promise<RuntimeReadiness>{
   liveRecording:liveRecordingCheck(strict),
   scaleCache,
   payments:paymentsCheck(strict),
+  pushNotifications:pushNotificationsCheck(strict),
   appUrl:appUrlCheck(strict)
  };
 
