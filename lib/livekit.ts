@@ -1,4 +1,5 @@
 import {AccessToken,RoomServiceClient} from "livekit-server-sdk";
+import {DataPacket_Kind} from "@livekit/protocol";
 import {canPublishPorchRole} from "@/lib/porchAccess";
 
 type TokenArgs={
@@ -150,4 +151,16 @@ export async function removeLivekitParticipant(roomId:string,userId:string){
   const message=error instanceof Error?error.message:String(error);
   if(!/not found|does not exist/i.test(message))throw error;
  }
+}
+
+export async function broadcastLivekitData(roomId:string,topic:string,payload:unknown){
+ if(!livekitEnabled())return;
+ if(process.env.LIVEKIT_TEST_MODE==="true")return;
+ const data=new TextEncoder().encode(JSON.stringify(payload));
+ await service().sendData(
+  livekitRoomName(roomId),
+  data,
+  DataPacket_Kind.RELIABLE,
+  {topic}
+ );
 }

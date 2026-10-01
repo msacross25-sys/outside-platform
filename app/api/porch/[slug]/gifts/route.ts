@@ -5,10 +5,13 @@ import {currentUser} from "@/lib/session";
 import {giftByKey,splitGift} from "@/lib/gifts";
 import {verifiedHours} from "@/lib/progression";
 import {getLiveMemberAccess} from "@/lib/porchAccess";
+import {checkActionLimit} from "@/lib/actionLimit";
 
 export async function POST(request:Request,{params}:{params:Promise<{slug:string}>}){
  const {slug}=await params;const me=await currentUser();
  if(!me)return NextResponse.json({error:"Sign in required."},{status:401});
+ const limit=await checkActionLimit(request,"live-gift",me.id,10,10000);
+ if(!limit.allowed)return NextResponse.json({error:limit.unavailable?"Gifting is temporarily unavailable.":"Gift rate limit reached."},{status:limit.unavailable?503:429,headers:{"Retry-After":String(limit.retryAfterSeconds)}});
  const buyer=await db.user.findUnique({where:{id:me.id},select:{dateOfBirth:true}});
  if(!isAtLeast18(buyer?.dateOfBirth))return NextResponse.json({error:"Purchasing or sending gifts requires an account age of 18 or older."},{status:403});
  const body=await request.json().catch(()=>null),gift=giftByKey(String(body?.giftKey??""));

@@ -8,6 +8,15 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
       postgres:
         image: postgres:16
         env:
@@ -41,6 +50,7 @@ jobs:
       LIVEKIT_API_SECRET: ci-livekit-secret
       LIVE_RECORDING_MODE: livekit
       LIVE_RECORDING_TEST_MODE: "true"
+      REDIS_URL: redis://127.0.0.1:6379
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -61,6 +71,8 @@ jobs:
             --exit-code
       - name: Verify restored database contract
         run: npm run db:restore-verify
+      - name: Static security audit
+        run: npm run security:audit
       - run: npm run lint
       - run: npm run typecheck
 
@@ -82,6 +94,7 @@ jobs:
           LIVEKIT_API_KEY: ci-livekit-key
           LIVEKIT_API_SECRET: ci-livekit-secret
           LIVE_RECORDING_MODE: livekit
+          REDIS_URL: redis://127.0.0.1:6379
         run: npm run deploy:preflight
 
       - run: npm run build
@@ -136,6 +149,7 @@ jobs:
             -e LIVEKIT_URL="$LIVEKIT_URL" \
             -e LIVE_RECORDING_MODE="$LIVE_RECORDING_MODE" \
             -e LIVE_RECORDING_TEST_MODE="$LIVE_RECORDING_TEST_MODE" \
+            -e REDIS_URL="$REDIS_URL" \
             outside-ci
 
       - name: Verify production container

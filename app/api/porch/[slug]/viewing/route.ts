@@ -3,11 +3,14 @@ import {db} from "@/lib/db";
 import {currentUser} from "@/lib/session";
 import {syncAchievements} from "@/lib/syncAchievements";
 import {getLiveMemberAccess} from "@/lib/porchAccess";
+import {checkActionLimit} from "@/lib/actionLimit";
 
 const MAX_GAP=90,ACTIVE_WINDOW=30;
 export async function POST(request:Request,{params}:{params:Promise<{slug:string}>}){
  const {slug}=await params,me=await currentUser();
  if(!me)return NextResponse.json({error:"Sign in required."},{status:401});
+ const limit=await checkActionLimit(request,"verified-viewing",me.id,6,60000);
+ if(!limit.allowed)return NextResponse.json({error:limit.unavailable?"Verified viewing is temporarily unavailable.":"Viewing heartbeat limit reached."},{status:limit.unavailable?503:429,headers:{"Retry-After":String(limit.retryAfterSeconds)}});
  const access=await getLiveMemberAccess(slug,me.id);
  if(!access)return NextResponse.json({error:"Live room unavailable."},{status:404});
  const room=access.room;
@@ -40,7 +43,7 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
   const row=await tx.viewingSession.update({where:{id:s.id},data:{lastHeartbeatAt:now,activityVerifiedAt:freshActivity,invalidReason:null,verifiedSeconds:{increment:delta}}});
   await tx.viewingProgress.upsert({where:{userId:me.id},create:{userId:me.id,verifiedSeconds:BigInt(delta)},update:{verifiedSeconds:{increment:BigInt(delta)}}});
   return row;
- },{isolationLevel:"Serializable"});
+ });
  if(updated.verifiedSeconds%300<MAX_GAP){
   const before=await db.userBadge.count({where:{userId:me.id}});
   const progress=await syncAchievements(me.id);

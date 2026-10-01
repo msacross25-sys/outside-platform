@@ -1,4 +1,5 @@
 import {NextResponse} from "next/server";
+import {Prisma} from "@prisma/client";
 import {WebhookReceiver} from "livekit-server-sdk";
 import {db} from "@/lib/db";
 import {livekitCredentials,roomIdFromLivekitRoomName} from "@/lib/livekit";
@@ -25,6 +26,44 @@ export async function POST(request:Request){
  }catch(error){
   console.error("LiveKit webhook verification failed",error);
   return NextResponse.json({error:"Unauthorized."},{status:401});
+ }
+
+ const rawEvent=event as any;
+
+ if(event.event==="participant_joined"){
+  const roomId=roomIdFromLivekitRoomName(String(rawEvent.room?.name??""));
+  const userId=String(rawEvent.participant?.identity??"");
+  if(roomId&&userId){
+   const now=new Date();
+   const created=await db.liveViewerPresence.createMany({
+    data:[{roomId,userId,lastSeenAt:now,active:true}],
+    skipDuplicates:true
+   });
+   await db.liveViewerPresence.updateMany({
+    where:{roomId,userId},
+    data:{lastSeenAt:now,active:true}
+   });
+   const current=Math.max(0,Number(rawEvent.room?.numParticipants??0));
+   await db.$executeRaw(Prisma.sql`
+    UPDATE "PorchRoom"
+    SET "peakViewers"=GREATEST("peakViewers",${current}),
+        "totalViewers"="totalViewers"+${created.count}
+    WHERE "id"=${roomId}
+   `);
+  }
+  return NextResponse.json({ok:true});
+ }
+
+ if(event.event==="participant_left"){
+  const roomId=roomIdFromLivekitRoomName(String(rawEvent.room?.name??""));
+  const userId=String(rawEvent.participant?.identity??"");
+  if(roomId&&userId){
+   await db.liveViewerPresence.updateMany({
+    where:{roomId,userId},
+    data:{active:false,lastSeenAt:new Date()}
+   });
+  }
+  return NextResponse.json({ok:true});
  }
 
  if(event.event!=="egress_ended"){

@@ -31,7 +31,7 @@ export function VerifiedViewingTracker({slug,status,host}:{slug:string;status:st
   };
   activity();
   void tick();
-  timer.current=window.setInterval(tick,10000);
+  timer.current=window.setInterval(tick,25000);
   return()=>{
    stopped=true;
    if(timer.current)clearInterval(timer.current);

@@ -67,7 +67,8 @@ function RemoteMedia({
 }
 
 export function LiveKitRoomMedia({slug,roomType,status,meId,initialMembers,myRole}:Props){
- const [members,setMembers]=useState(initialMembers);
+ const [members]=useState(initialMembers);
+ const [roleState,setRoleState]=useState(myRole);
  const [joined,setJoined]=useState(!!initialMembers.find(x=>x.userId===meId));
  const [connected,setConnected]=useState(false);
  const [message,setMessage]=useState("");
@@ -80,7 +81,7 @@ export function LiveKitRoomMedia({slug,roomType,status,meId,initialMembers,myRol
  const localVideo=useRef<HTMLVideoElement>(null);
  const roomRef=useRef<Room|null>(null);
 
- const liveRole=members.find(x=>x.userId===meId)?.role??myRole;
+ const liveRole=roleState??members.find(x=>x.userId===meId)?.role??myRole;
  const publish=canPublishLiveMedia(liveRole);
 
  const refreshRemote=useCallback((room:Room)=>{
@@ -99,8 +100,8 @@ export function LiveKitRoomMedia({slug,roomType,status,meId,initialMembers,myRol
   return true;
  },[slug]);
 
- const loadMembers=useCallback(async()=>{
-  const response=await fetch(`/api/porch/${slug}/members`,{cache:"no-store"});
+ const checkAccess=useCallback(async()=>{
+  const response=await fetch(`/api/porch/${slug}/access`,{cache:"no-store"});
   if(!response.ok){
    if(response.status===403||response.status===404){
     setJoined(false);
@@ -112,7 +113,7 @@ export function LiveKitRoomMedia({slug,roomType,status,meId,initialMembers,myRol
    return;
   }
   const data=await response.json();
-  setMembers(data.members??[]);
+  setRoleState(data.role??"LISTENER");
  },[slug]);
 
  useEffect(()=>{
@@ -120,17 +121,17 @@ export function LiveKitRoomMedia({slug,roomType,status,meId,initialMembers,myRol
   let active=true;
 
   void join().then(ok=>{
-   if(ok&&active)void loadMembers();
+   if(ok&&active)void checkAccess();
   });
 
-  const timer=window.setInterval(()=>void loadMembers(),2500);
+  const timer=window.setInterval(()=>void checkAccess(),10000);
 
   return()=>{
    active=false;
    clearInterval(timer);
    fetch(`/api/porch/${slug}/disconnect`,{method:"POST",keepalive:true}).catch(()=>{});
   };
- },[status,join,loadMembers,slug]);
+ },[status,join,checkAccess,slug]);
 
  useEffect(()=>{
   if(status!=="LIVE"||!joined)return;
@@ -154,6 +155,15 @@ export function LiveKitRoomMedia({slug,roomType,status,meId,initialMembers,myRol
   room.on(RoomEvent.TrackSubscribed,refresh);
   room.on(RoomEvent.TrackUnsubscribed,refresh);
   room.on(RoomEvent.ParticipantPermissionsChanged,refresh);
+  room.on(RoomEvent.DataReceived,(payload,_participant,_kind,topic)=>{
+   if(!topic)return;
+   try{
+    const detail=JSON.parse(new TextDecoder().decode(payload));
+    window.dispatchEvent(new CustomEvent("outside:live-data",{
+     detail:{slug,topic,payload:detail}
+    }));
+   }catch{}
+  });
   room.on(RoomEvent.Disconnected,disconnected);
 
   void (async()=>{

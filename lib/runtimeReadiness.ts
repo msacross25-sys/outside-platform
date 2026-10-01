@@ -2,6 +2,7 @@ import {db} from "@/lib/db";
 import {mediaStorageReady} from "@/lib/mediaStorage";
 import {livekitEnabled,liveMediaProvider} from "@/lib/livekit";
 import {liveRecordingMode,liveRecordingReady,liveRecordingTestMode} from "@/lib/liveRecording";
+import {redisHealth} from "@/lib/redis";
 
 export type ReadinessCheck={
  ok:boolean;
@@ -19,6 +20,7 @@ export type RuntimeReadiness={
   media:ReadinessCheck;
   liveTransport:ReadinessCheck;
   liveRecording:ReadinessCheck;
+  scaleCache:ReadinessCheck;
   appUrl:ReadinessCheck;
  };
 };
@@ -101,6 +103,10 @@ function liveRecordingCheck(strict:boolean):ReadinessCheck{
  return {ok:true};
 }
 
+async function scaleCacheCheck():Promise<ReadinessCheck>{
+ return await redisHealth()?{ok:true}:{ok:false,message:"Redis scale cache is unavailable."};
+}
+
 async function databaseCheck():Promise<ReadinessCheck>{
  try{
   await db.$queryRaw`SELECT 1`;
@@ -126,9 +132,10 @@ async function securitySchemaCheck():Promise<ReadinessCheck>{
 
 export async function runtimeReadiness():Promise<RuntimeReadiness>{
  const strict=process.env.READINESS_MODE!=="test";
- const [database,securitySchema]=await Promise.all([
+ const [database,securitySchema,scaleCache]=await Promise.all([
   databaseCheck(),
-  securitySchemaCheck()
+  securitySchemaCheck(),
+  scaleCacheCheck()
  ]);
 
  const checks={
@@ -139,6 +146,7 @@ export async function runtimeReadiness():Promise<RuntimeReadiness>{
   media:mediaCheck(strict),
   liveTransport:liveTransportCheck(strict),
   liveRecording:liveRecordingCheck(strict),
+  scaleCache,
   appUrl:appUrlCheck(strict)
  };
 

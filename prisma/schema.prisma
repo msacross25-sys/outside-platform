@@ -729,6 +729,7 @@ model ViewingSession {
   room PorchRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
   @@index([userId, startedAt])
   @@index([userId, endedAt, eligible])
+  @@index([userId, endedAt, eligible, startedAt])
   @@index([roomId, startedAt])
 }
 
@@ -780,6 +781,7 @@ model GiftTransaction {
   room PorchRoom? @relation(fields: [roomId], references: [id], onDelete: SetNull)
   @@index([senderId, createdAt])
   @@index([recipientId, createdAt])
+  @@index([recipientId, status, createdAt])
   @@index([roomId])
   @@index([status, createdAt])
 }
@@ -818,6 +820,7 @@ model CreatorPayout {
   updatedAt DateTime @updatedAt
   creator User @relation(fields: [creatorId], references: [id], onDelete: Restrict)
   @@index([creatorId, createdAt])
+  @@index([creatorId, status, createdAt])
   ledgerEntries PayoutLedgerEntry[]
   @@index([status, scheduledFor])
 }
