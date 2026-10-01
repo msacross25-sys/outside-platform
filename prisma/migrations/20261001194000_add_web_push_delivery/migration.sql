@@ -1,4 +1,5 @@
 -- AlterEnum
+ALTER TYPE "NotificationType" ADD VALUE 'FOLLOW_REQUEST';
 ALTER TYPE "NotificationType" ADD VALUE 'MESSAGE';
 
 -- CreateEnum
