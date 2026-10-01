@@ -15,7 +15,7 @@ export async function GET(){
   db.battleRewardLedger.count({where:{userId:me.id,kind:"WINNER_WHEEL_SPIN",status:"AVAILABLE"}}),
   db.battleRewardLedger.groupBy({
    by:["currency"],
-   where:{userId:me.id,status:"AVAILABLE",currency:{in:["BATTLE_TOKEN","GEM","CARD_DOUBLE_POINT"]}},
+   where:{userId:me.id,status:"AVAILABLE",currency:{in:["BATTLE_TOKEN","GEM","CARD_DOUBLE_POINT","CARD_SHIELD"]}},
    _sum:{amount:true}
   }),
   db.battleRewardLedger.findMany({where:{userId:me.id},orderBy:{createdAt:"desc"},take:20}),
