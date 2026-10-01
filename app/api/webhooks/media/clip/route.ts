@@ -41,7 +41,12 @@ export async function POST(request:Request){
  }
 
  const clip=await db.clip.findUnique({where:{id:clipId},select:{id:true,mediaUrl:true}});
- if(!clip)return NextResponse.json({ok:true});
+ if(!clip){
+  if(status==="READY"){
+   try{await deleteStoredMedia(clipObjectKey(clipId))}catch{}
+  }
+  return NextResponse.json({ok:true});
+ }
 
  if(status==="FAILED"){
   try{await deleteStoredMedia(clipObjectKey(clipId))}catch{}
