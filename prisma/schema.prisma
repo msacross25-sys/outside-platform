@@ -1101,7 +1101,7 @@ model BattleTeam {
   giftValueCents Int @default(0)
   activeMultiplier Int @default(1)
   multiplierExpiresAt DateTime?
-  battle Battle? @relation(fields:[battleId], references:[id], onDelete:SetNull)
+  battle Battle @relation(fields:[battleId], references:[id], onDelete:Cascade)
   @@unique([battleId,side])
 }
 
@@ -1240,7 +1240,7 @@ model BattleEarning {
   status LedgerStatus @default(PENDING)
   createdAt DateTime @default(now())
   settledAt DateTime?
-  battle Battle @relation(fields:[battleId], references:[id], onDelete:Cascade)
+  battle Battle? @relation(fields:[battleId], references:[id], onDelete:SetNull)
   user User @relation(fields:[userId], references:[id], onDelete:Restrict)
   @@index([userId,status,createdAt])
   @@index([battleId,createdAt])
