@@ -274,6 +274,8 @@ model User {
   battlePass BattlePassProgress?
   tournamentEntries BattleTournamentEntry[]
   hostedBattleTournaments BattleTournament[]
+  battleGuildMemberships BattleGuildMember[]
+  ownedBattleGuilds BattleGuild[]
   staffProfile StaffProfile?
   moderationActions ModerationActionLog[] @relation("moderationActor")
   auditEvents AuditLog[] @relation("auditActor")
@@ -1113,6 +1115,59 @@ model MonthlyHostRank {
   @@index([month,rank])
 }
 
+
+model BattleGuild {
+  id String @id @default(cuid())
+  slug String @unique
+  name String
+  ownerId String
+  regionCode String?
+  description String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  owner User @relation(fields:[ownerId], references:[id], onDelete:Cascade)
+  members BattleGuildMember[]
+  territoryScores BattleTerritoryScore[]
+  territories BattleTerritory[]
+  @@index([ownerId])
+  @@index([regionCode])
+}
+
+model BattleGuildMember {
+  guildId String
+  userId String
+  role String @default("MEMBER")
+  joinedAt DateTime @default(now())
+  guild BattleGuild @relation(fields:[guildId], references:[id], onDelete:Cascade)
+  user User @relation(fields:[userId], references:[id], onDelete:Cascade)
+  @@id([guildId,userId])
+  @@index([userId])
+}
+
+model BattleTerritory {
+  id String @id @default(cuid())
+  regionCode String @unique
+  holderGuildId String?
+  seasonKey String
+  heldSince DateTime?
+  updatedAt DateTime @updatedAt
+  holderGuild BattleGuild? @relation(fields:[holderGuildId], references:[id], onDelete:SetNull)
+  scores BattleTerritoryScore[]
+  @@index([holderGuildId])
+  @@index([seasonKey])
+}
+
+model BattleTerritoryScore {
+  guildId String
+  territoryId String
+  seasonKey String
+  points BigInt @default(0)
+  updatedAt DateTime @updatedAt
+  guild BattleGuild @relation(fields:[guildId], references:[id], onDelete:Cascade)
+  territory BattleTerritory @relation(fields:[territoryId], references:[id], onDelete:Cascade)
+  @@id([guildId,territoryId,seasonKey])
+  @@index([territoryId,seasonKey,points])
+}
 
 model BattleProfile {
   userId String @id
