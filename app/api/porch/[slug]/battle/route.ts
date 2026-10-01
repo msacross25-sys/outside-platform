@@ -15,12 +15,43 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
  }
 
  const body=await request.json().catch(()=>null);
- const duration=Number(body?.durationMinutes);
- const theme=String(body?.theme??"");
- const mode=String(body?.mode??"TEAM_V_TEAM");
- const tournamentId=body?.tournamentId?String(body.tournamentId):null;
- const left=Array.isArray(body?.left)?body.left.map(String):[];
- const right=Array.isArray(body?.right)?body.right.map(String):[];
+ const rematchBattleId=body?.rematchBattleId?String(body.rematchBattleId):null;
+
+ let duration=Number(body?.durationMinutes);
+ let theme=String(body?.theme??"");
+ let mode=String(body?.mode??"TEAM_V_TEAM");
+ let tournamentId=body?.tournamentId?String(body.tournamentId):null;
+ let left=Array.isArray(body?.left)?body.left.map(String):[];
+ let right=Array.isArray(body?.right)?body.right.map(String):[];
+ let roundNumber=Number.isFinite(Number(body?.roundNumber))?Number(body.roundNumber):null;
+ let matchNumber=Number.isFinite(Number(body?.matchNumber))?Number(body.matchNumber):null;
+
+ if(rematchBattleId){
+  const previous=await db.battle.findUnique({where:{id:rematchBattleId},include:{teams:true}});
+  if(!previous||previous.roomId!==room.id||previous.status!=="ENDED"){
+   return NextResponse.json({error:"That completed battle is not available for a rematch."},{status:409});
+  }
+  if(previous.mode==="TOURNAMENT"){
+   return NextResponse.json({error:"Tournament matches cannot be restarted as card rematches."},{status:409});
+  }
+  const requests=await db.battleRewardLedger.count({
+   where:{battleId:previous.id,kind:"REMATCH_REQUEST",currency:"CARD_REMATCH",status:"AVAILABLE"}
+  });
+  if(requests<1)return NextResponse.json({error:"A participant must use a Rematch Card first."},{status:409});
+
+  const side1=previous.teams.find(team=>team.side===1);
+  const side2=previous.teams.find(team=>team.side===2);
+  if(!side1||!side2)return NextResponse.json({error:"Previous battle teams are unavailable."},{status:409});
+
+  duration=previous.durationMinutes;
+  theme=previous.theme;
+  mode=previous.mode;
+  tournamentId=null;
+  left=side1.memberIds;
+  right=side2.memberIds;
+  roundNumber=null;
+  matchNumber=null;
+ }
 
  if(!validBattleDuration(duration))return NextResponse.json({error:"Battle must be 5, 10, or 20 minutes."},{status:400});
  if(!validBattleMode(mode))return NextResponse.json({error:"Choose a valid battle mode."},{status:400});
@@ -58,7 +89,7 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
   const live=await tx.battle.findFirst({where:{roomId:room.id,status:"LIVE"},select:{id:true}});
   if(live)throw new Error("ACTIVE_BATTLE");
 
-  return tx.battle.create({
+  const created=await tx.battle.create({
    data:{
     roomId:room.id,
     tournamentId,
@@ -67,8 +98,8 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
     durationMinutes:duration,
     status:"LIVE",
     startedAt:new Date(),
-    roundNumber:Number.isFinite(Number(body?.roundNumber))?Number(body.roundNumber):null,
-    matchNumber:Number.isFinite(Number(body?.matchNumber))?Number(body.matchNumber):null,
+    roundNumber,
+    matchNumber,
     teams:{create:[
      {side:1,memberIds:left},
      {side:2,memberIds:right}
@@ -76,6 +107,14 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
    },
    include:{teams:true}
   });
+
+  if(rematchBattleId){
+   await tx.battleRewardLedger.updateMany({
+    where:{battleId:rematchBattleId,kind:"REMATCH_REQUEST",currency:"CARD_REMATCH",status:"AVAILABLE"},
+    data:{status:"CLAIMED"}
+   });
+  }
+  return created;
  },{isolationLevel:"Serializable"}).catch(error=>{
   if(error instanceof Error&&error.message==="ACTIVE_BATTLE")return null;
   throw error;
@@ -120,7 +159,12 @@ export async function GET(_:Request,{params}:{params:Promise<{slug:string}>}){
    orderBy:{endedAt:"desc"},
    include:{teams:true}
   });
-  return NextResponse.json({battle:null,recent});
+  const rematchRequests=recent&&recent.mode!=="TOURNAMENT"
+   ?await db.battleRewardLedger.count({
+     where:{battleId:recent.id,kind:"REMATCH_REQUEST",currency:"CARD_REMATCH",status:"AVAILABLE"}
+    })
+   :0;
+  return NextResponse.json({battle:null,recent,rematchRequests});
  }
 
  const deadline=(battle.startedAt?.getTime()??0)+battle.durationMinutes*60000;
