@@ -165,7 +165,7 @@ export async function runBattleRollups(now=new Date()){
     where:{battleId:{not:null},createdAt:{gte:previousMonth,lt:currentMonth}},
     _sum:{dollarValueCents:true},
     orderBy:{_sum:{dollarValueCents:"desc"}},
-    take:1
+    take:10
    })
   ]);
 
@@ -185,6 +185,25 @@ export async function runBattleRollups(now=new Date()){
      where:{userId_key:{userId:topGifter,key:"TOP_GIFTER_"+mKey}},
      create:{userId:topGifter,key:"TOP_GIFTER_"+mKey,name:"Top Gifter Leader",icon:"💎",featured:true},
      update:{featured:true}
+    });
+    await tx.userBadge.upsert({
+     where:{userId_key:{userId:topGifter,key:"TOP_GIFTER_LEADER"}},
+     create:{userId:topGifter,key:"TOP_GIFTER_LEADER",name:"Top Gifter Leader",icon:"💎",featured:true},
+     update:{featured:true}
+    });
+   }
+
+   for(let i=0;i<gifters.length;i++){
+    const supporter=gifters[i].senderId;
+    await tx.userBadge.upsert({
+     where:{userId_key:{userId:supporter,key:"TOP_GIFTER_SUPPORTER_"+mKey}},
+     create:{userId:supporter,key:"TOP_GIFTER_SUPPORTER_"+mKey,name:"Top Gifter Supporter · "+mKey,icon:"🎁",featured:i<3},
+     update:{featured:i<3}
+    });
+    await tx.userBadge.upsert({
+     where:{userId_key:{userId:supporter,key:"TOP_GIFTER_SUPPORTER"}},
+     create:{userId:supporter,key:"TOP_GIFTER_SUPPORTER",name:"Top Gifter Supporter",icon:"🎁",featured:false},
+     update:{}
     });
    }
    await tx.battleRewardLedger.create({
