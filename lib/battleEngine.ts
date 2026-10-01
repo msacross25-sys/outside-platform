@@ -226,6 +226,7 @@ export async function finalizeBattle(battleId:string,endedAt=new Date()){
     });
     const unfinished=await tx.battle.count({
      where:{
+      id:{not:battle.id},
       tournamentId:battle.tournamentId,
       roundNumber:tournament?.currentRound??battle.roundNumber,
       status:{in:["SCHEDULED","LIVE"]}
