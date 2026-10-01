@@ -71,6 +71,8 @@ jobs:
             --exit-code
       - name: Verify restored database contract
         run: npm run db:restore-verify
+      - name: Static security audit
+        run: npm run security:audit
       - run: npm run lint
       - run: npm run typecheck
 
