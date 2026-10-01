@@ -119,7 +119,7 @@ function canonicalQuery(params:Record<string,string>){
   .join("&");
 }
 
-function presign(method:"PUT"|"GET",key:string,expiresInSeconds:number,contentType?:string){
+function presign(method:"PUT"|"GET",key:string,expiresInSeconds:number,contentType?:string,responseParams:Record<string,string>={}){
  const {cfg,url,canonicalUri}=objectTarget(key);
  const {amzDate,dateStamp}=dateParts();
  const scope=dateStamp+"/"+cfg.region+"/s3/aws4_request";
@@ -129,7 +129,8 @@ function presign(method:"PUT"|"GET",key:string,expiresInSeconds:number,contentTy
   "X-Amz-Credential":cfg.accessKey+"/"+scope,
   "X-Amz-Date":amzDate,
   "X-Amz-Expires":String(expiresInSeconds),
-  "X-Amz-SignedHeaders":signedHeaders
+  "X-Amz-SignedHeaders":signedHeaders,
+  ...responseParams
  };
  if(cfg.sessionToken)params["X-Amz-Security-Token"]=cfg.sessionToken;
 
@@ -161,11 +162,16 @@ export function createSignedMediaUpload(spec:UploadSpec):SignedUpload{
  };
 }
 
-export function createSignedMediaDownload(key:string){
+export function createSignedMediaDownload(key:string,options?:{downloadName?:string}){
  if(mode()==="test"&&process.env.ALLOW_TEST_MEDIA_STORAGE==="true"){
   return "https://media.example.test/test-object";
  }
- return presign("GET",key,900);
+ const responseParams:Record<string,string>={};
+ if(options?.downloadName){
+  const safe=options.downloadName.replace(/[^a-zA-Z0-9._-]/g,"_");
+  responseParams["response-content-disposition"]='attachment; filename="'+safe+'"';
+ }
+ return presign("GET",key,900,undefined,responseParams);
 }
 
 function signedRequest(method:"HEAD"|"DELETE",key:string){
