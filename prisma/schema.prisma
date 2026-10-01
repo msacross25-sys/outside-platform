@@ -459,6 +459,7 @@ model Notification {
   actorId String
   type NotificationType
   postId String?
+  targetUrl String?
   readAt DateTime?
   createdAt DateTime @default(now())
   recipient User @relation("notificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
