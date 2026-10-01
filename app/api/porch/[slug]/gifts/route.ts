@@ -58,7 +58,8 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
   if(requestedSide!==1&&requestedSide!==2)return NextResponse.json({error:"Choose Side 1 or Side 2 for this battle gift."},{status:400});
   const team=activeBattle.teams.find(item=>item.side===requestedSide);
   if(!team||!team.memberIds.length)return NextResponse.json({error:"That battle side is unavailable."},{status:409});
-  if(team.memberIds.includes(me.id))return NextResponse.json({error:"Battle participants cannot gift their own side."},{status:400});
+  const participantIds=new Set(activeBattle.teams.flatMap(item=>item.memberIds));
+  if(participantIds.has(me.id))return NextResponse.json({error:"Battle participants cannot send gifts during their own active match."},{status:400});
 
   const split=battleSplit(gift.valueCents);
   const multiplier=surgeMultiplier(activeBattle.startedAt,activeBattle.durationMinutes);
