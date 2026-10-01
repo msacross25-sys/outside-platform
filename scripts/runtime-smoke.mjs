@@ -291,6 +291,50 @@ async function main(){
  expect(refundedPurchase?.status==="REFUNDED"&&refundedPurchase.reversedCoins===purchase.coins,"Refund did not reverse purchase coins",refundedPurchase);
  expect(refundedWallet?.balanceCoins===0n,"Refund did not remove purchased coins",refundedWallet);
 
+ const chargebackCheckout=await request("/api/wallet/checkout",{
+  method:"POST",
+  cookie:resetCookie,
+  body:{packageKey:"starter"}
+ });
+ expect(chargebackCheckout.response.status===201&&chargebackCheckout.data?.purchaseId,"Chargeback test checkout was not created",chargebackCheckout.data);
+ const chargebackPurchase=await db.coinPurchase.findUnique({where:{id:chargebackCheckout.data.purchaseId}});
+ expect(Boolean(chargebackPurchase?.providerPaymentId),"Chargeback test purchase missed payment intent",chargebackPurchase);
+
+ const chargebackPaid=await stripeWebhook({
+  id:"evt_chargeback_paid_"+suffix,
+  type:"checkout.session.completed",
+  data:{object:{
+   id:chargebackPurchase.providerSessionId,
+   payment_status:"paid",
+   payment_intent:chargebackPurchase.providerPaymentId,
+   amount_total:chargebackPurchase.amountCents,
+   currency:"usd",
+   metadata:{purchaseId:chargebackPurchase.id,userId:resetUser.id}
+  }}
+ });
+ expect(chargebackPaid.response.status===200,"Chargeback test purchase was not credited",chargebackPaid.data);
+
+ await db.coinWallet.update({
+  where:{userId:resetUser.id},
+  data:{balanceCoins:{decrement:400n}}
+ });
+
+ const dispute=await stripeWebhook({
+  id:"evt_dispute_"+suffix,
+  type:"charge.dispute.created",
+  data:{object:{
+   id:"dp_test_"+suffix,
+   charge:"ch_dispute_"+chargebackPurchase.id,
+   payment_intent:chargebackPurchase.providerPaymentId
+  }}
+ });
+ expect(dispute.response.status===200,"Chargeback webhook failed",dispute.data);
+
+ const chargedBackPurchase=await db.coinPurchase.findUnique({where:{id:chargebackPurchase.id}});
+ const chargedBackWallet=await db.coinWallet.findUnique({where:{userId:resetUser.id}});
+ expect(chargedBackPurchase?.status==="CHARGEBACK"&&chargedBackPurchase.reversedCoins===chargebackPurchase.coins,"Chargeback did not reverse all purchased coins",chargedBackPurchase);
+ expect(chargedBackWallet?.balanceCoins===-400n,"Spent-coin chargeback did not preserve negative wallet liability",chargedBackWallet);
+
  const connectStart=await request("/api/wallet/payout/onboarding",{method:"POST",cookie:bobCookie});
  expect(connectStart.response.status===200&&connectStart.data?.onboardingUrl,"Creator payout onboarding did not start",connectStart.data);
  const connectStatus=await request("/api/wallet/payout/onboarding",{cookie:bobCookie});
