@@ -1,0 +1,1 @@
+ALTER TABLE "BattleCosmeticSelection" ENABLE ROW LEVEL SECURITY;
