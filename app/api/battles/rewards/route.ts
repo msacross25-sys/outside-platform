@@ -1,7 +1,8 @@
 import {NextResponse} from "next/server";
 import {db} from "@/lib/db";
 import {currentUser} from "@/lib/session";
-import {battlePassLevel,spinWinnerWheel} from "@/lib/battleRewards";
+import {spinWinnerWheel} from "@/lib/battleRewards";
+import {battlePassLevel} from "@/lib/battleRewardCatalog";
 
 export async function GET(){
  const me=await currentUser();
