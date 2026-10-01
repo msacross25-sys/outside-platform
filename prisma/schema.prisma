@@ -1093,6 +1093,8 @@ model BattleTeam {
   basePoints Int @default(0)
   surgePoints Int @default(0)
   giftValueCents Int @default(0)
+  activeMultiplier Int @default(1)
+  multiplierExpiresAt DateTime?
   battle Battle @relation(fields:[battleId], references:[id], onDelete:Cascade)
   @@unique([battleId,side])
 }
