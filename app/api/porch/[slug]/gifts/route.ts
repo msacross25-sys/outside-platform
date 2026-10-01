@@ -22,6 +22,25 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
  const room=access.room,recipient=room.members.find(m=>m.role==="HOST");
  if(!recipient)return NextResponse.json({error:"Host not found."},{status:404});
  if(recipient.userId===me.id)return NextResponse.json({error:"You cannot send a gift to yourself."},{status:400});
+
+ const activeBattle=await db.battle.findFirst({
+  where:{roomId:room.id,status:"LIVE"},
+  orderBy:{startedAt:"desc"},
+  include:{teams:true}
+ });
+ let battleSide:1|2|undefined;
+ if(activeBattle){
+  const deadline=(activeBattle.startedAt?.getTime()??0)+activeBattle.durationMinutes*60000;
+  if(deadline&&Date.now()>=deadline){
+   await db.battle.update({where:{id:activeBattle.id},data:{status:"ENDED",endedAt:new Date(deadline)}});
+  }else{
+   const requested=Number(body?.battleSide);
+   if(requested!==1&&requested!==2)return NextResponse.json({error:"Choose Side 1 or Side 2 for this battle gift."},{status:400});
+   battleSide=requested as 1|2;
+   if(!activeBattle.teams.some(team=>team.side===battleSide))return NextResponse.json({error:"That battle side is unavailable."},{status:409});
+  }
+ }
+
  const [recipientFollowers,recipientProgress,hostApplication]=await Promise.all([
   db.follow.count({where:{followingId:recipient.userId}}),
   db.viewingProgress.findUnique({where:{userId:recipient.userId}}),
@@ -35,11 +54,26 @@ export async function POST(request:Request,{params}:{params:Promise<{slug:string
    const wallet=await tx.coinWallet.findUnique({where:{userId:me.id}});
    if(!wallet||wallet.balanceCoins<BigInt(gift.coins))throw new Error("INSUFFICIENT_COINS");
    await tx.coinWallet.update({where:{userId:me.id},data:{balanceCoins:{decrement:BigInt(gift.coins)}}});
-   return tx.giftTransaction.create({data:{senderId:me.id,recipientId:recipient.userId,roomId:room.id,giftKey:gift.key,giftName:gift.name,coinCost:BigInt(gift.coins),dollarValueCents:gift.valueCents,creatorShareCents:split.creatorShareCents,platformShareCents:split.platformShareCents,status:"PENDING"}});
+   const giftTransaction=await tx.giftTransaction.create({data:{senderId:me.id,recipientId:recipient.userId,roomId:room.id,giftKey:gift.key,giftName:gift.name,coinCost:BigInt(gift.coins),dollarValueCents:gift.valueCents,creatorShareCents:split.creatorShareCents,platformShareCents:split.platformShareCents,status:"PENDING"}});
+   if(activeBattle&&battleSide){
+    const updated=await tx.battleTeam.updateMany({
+     where:{battleId:activeBattle.id,side:battleSide},
+     data:{score:{increment:gift.coins}}
+    });
+    if(updated.count!==1)throw new Error("BATTLE_SIDE_UNAVAILABLE");
+   }
+   return giftTransaction;
   },{isolationLevel:"Serializable"});
-  return NextResponse.json({gift:{id:transaction.id,name:gift.name,coins:gift.coins,valueCents:gift.valueCents},creatorSharePercent,creatorShareCents:split.creatorShareCents,platformShareCents:split.platformShareCents});
+  return NextResponse.json({
+   gift:{id:transaction.id,name:gift.name,coins:gift.coins,valueCents:gift.valueCents},
+   creatorSharePercent,
+   creatorShareCents:split.creatorShareCents,
+   platformShareCents:split.platformShareCents,
+   battle:battleSide?{side:battleSide,points:gift.coins}:null
+  });
  }catch(error){
   if(error instanceof Error&&error.message==="INSUFFICIENT_COINS")return NextResponse.json({error:"Not enough coins."},{status:409});
+  if(error instanceof Error&&error.message==="BATTLE_SIDE_UNAVAILABLE")return NextResponse.json({error:"That battle side is no longer available."},{status:409});
   return NextResponse.json({error:"Gift could not be sent. Please try again."},{status:409});
  }
 }
