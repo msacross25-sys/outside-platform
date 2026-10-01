@@ -49,6 +49,7 @@ enum NotificationType {
   FOLLOW
   LIKE
   COMMENT
+  MESSAGE
   LIVE_STARTED
   GIFT_RECEIVED
   FOLLOWER_MILESTONE
@@ -420,6 +421,21 @@ model Story {
   @@index([expiresAt])
 }
 
+
+model PushSubscription {
+  id String @id @default(cuid())
+  userId String
+  endpoint String @unique
+  p256dh String
+  auth String
+  userAgent String?
+  disabledAt DateTime?
+  lastSeenAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, disabledAt])
+}
 
 model Notification {
   id String @id @default(cuid())
