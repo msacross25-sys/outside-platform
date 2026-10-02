@@ -17,7 +17,8 @@ const required=[
  "CLIP_WORKER_SECRET",
  "REDIS_URL",
  "STRIPE_SECRET_KEY",
- "STRIPE_WEBHOOK_SECRET"
+ "STRIPE_WEBHOOK_SECRET",
+ "BATTLE_CRON_SECRET"
 ];
 
 const missing=required.filter(name=>!process.env[name]?.trim());
@@ -48,6 +49,10 @@ if((process.env.CLIP_WORKER_SECRET??"").length<32){
  errors.push("CLIP_WORKER_SECRET must be at least 32 characters.");
 }
 
+if((process.env.BATTLE_CRON_SECRET??"").length<32){
+ errors.push("BATTLE_CRON_SECRET must be at least 32 characters.");
+}
+
 const mfa=process.env.MFA_ENCRYPTION_KEY??"";
 let validMfa=/^[0-9a-f]{64}$/i.test(mfa);
 if(!validMfa){
@@ -69,6 +74,11 @@ if((process.env.LIVE_MEDIA_PROVIDER??"").toLowerCase()!=="livekit"){
 
 if((process.env.LIVE_RECORDING_MODE??"").toLowerCase()!=="livekit"){
  errors.push("LIVE_RECORDING_MODE must be livekit for production replay recording.");
+}
+
+const battlePassPrice=Number(process.env.BATTLE_PASS_PRICE_CENTS??999);
+if(!Number.isInteger(battlePassPrice)||battlePassPrice<99||battlePassPrice>100000){
+ errors.push("BATTLE_PASS_PRICE_CENTS must be an integer between 99 and 100000 cents.");
 }
 
 if(process.env.STRIPE_TEST_MODE==="true"){
