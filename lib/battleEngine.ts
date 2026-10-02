@@ -132,11 +132,23 @@ export async function finalizeBattle(battleId:string,endedAt=new Date()){
     });
 
     const xp=Math.max(10,Math.floor(rankingPoints/100));
-    await tx.battlePassProgress.upsert({
-     where:{userId},
-     create:{userId,seasonKey:seasonKey(endedAt),freeXp:xp,level:1},
-     update:{seasonKey:seasonKey(endedAt),freeXp:{increment:xp}}
-    });
+    const currentSeason=seasonKey(endedAt);
+    const passProgress=await tx.battlePassProgress.findUnique({where:{userId}});
+    if(!passProgress){
+     await tx.battlePassProgress.create({
+      data:{userId,seasonKey:currentSeason,freeXp:xp,level:1}
+     });
+    }else if(passProgress.seasonKey!==currentSeason){
+     await tx.battlePassProgress.update({
+      where:{userId},
+      data:{seasonKey:currentSeason,freeXp:xp,premiumXp:0,premiumActive:false,level:1}
+     });
+    }else{
+     await tx.battlePassProgress.update({
+      where:{userId},
+      data:{freeXp:{increment:xp}}
+     });
+    }
 
     await tx.userBadge.upsert({
      where:{userId_key:{userId,key:"BATTLE_RANK_"+rank.key}},
