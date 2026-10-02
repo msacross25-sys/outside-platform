@@ -1,6 +1,7 @@
 import {NextResponse} from "next/server";
 import {db} from "@/lib/db";
 import {currentUser} from "@/lib/session";
+import {battleSeasonKey} from "@/lib/battlePass";
 
 const CATEGORIES=["ACCOUNT","LIVE","BATTLE","PAYMENTS","SAFETY","OTHER"] as const;
 
@@ -35,7 +36,7 @@ export async function POST(request:Request){
   db.battleProfile.findUnique({where:{userId:me.id},select:{vipUntil:true}}),
   db.battlePassProgress.findUnique({where:{userId:me.id},select:{premiumActive:true}})
  ]);
- const vipActive=Boolean((profile?.vipUntil&&profile.vipUntil>new Date())||pass?.premiumActive);
+ const vipActive=Boolean((profile?.vipUntil&&profile.vipUntil>new Date())||(pass?.premiumActive&&pass.seasonKey===battleSeasonKey()));
 
  const ticket=await db.supportTicket.create({
   data:{
