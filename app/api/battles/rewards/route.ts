@@ -3,12 +3,14 @@ import {db} from "@/lib/db";
 import {currentUser} from "@/lib/session";
 import {spinWinnerWheel} from "@/lib/battleRewards";
 import {battlePassLevel} from "@/lib/battleRewardCatalog";
+import {battlePassPriceCents,battleSeasonKey} from "@/lib/battlePass";
 
 export async function GET(){
  const me=await currentUser();
  if(!me)return NextResponse.json({error:"Sign in required."},{status:401});
 
- const [profile,pass,badges,spins,balances,recent,passClaims]=await Promise.all([
+ const seasonKey=battleSeasonKey();
+ const [profile,pass,badges,spins,balances,recent,passClaims,passPurchase]=await Promise.all([
   db.battleProfile.findUnique({where:{userId:me.id}}),
   db.battlePassProgress.findUnique({where:{userId:me.id}}),
   db.userBadge.findMany({where:{userId:me.id,key:{startsWith:"BATTLE"}},orderBy:{unlockedAt:"desc"},take:30}),
@@ -19,7 +21,8 @@ export async function GET(){
    _sum:{amount:true}
   }),
   db.battleRewardLedger.findMany({where:{userId:me.id},orderBy:{createdAt:"desc"},take:20}),
-  db.battleRewardLedger.findMany({where:{userId:me.id,kind:{startsWith:"BATTLE_PASS_"},status:"CLAIMED"},select:{kind:true}})
+  db.battleRewardLedger.findMany({where:{userId:me.id,kind:{startsWith:"BATTLE_PASS_"},status:"CLAIMED"},select:{kind:true}}),
+  db.battlePassPurchase.findUnique({where:{userId_seasonKey:{userId:me.id,seasonKey}}})
  ]);
 
  const xp=pass?.freeXp??0;
@@ -35,7 +38,13 @@ export async function GET(){
   wheelSpins:spins,
   balances:Object.fromEntries(balances.map(row=>[row.currency,row._sum.amount??0])),
   recent,
-  passClaims:passClaims.map(row=>row.kind)
+  passClaims:passClaims.map(row=>row.kind),
+  premiumPass:{
+   seasonKey,
+   priceCents:battlePassPriceCents(),
+   active:!!pass?.premiumActive&&pass.seasonKey===seasonKey,
+   purchaseStatus:passPurchase?.status??null
+  }
  });
 }
 
