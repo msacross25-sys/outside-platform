@@ -106,6 +106,8 @@ jobs:
           STRIPE_SECRET_KEY: sk_live_ci_fake
           STRIPE_WEBHOOK_SECRET: whsec_live_ci_fake
           CLIP_WORKER_SECRET: ci-only-clip-worker-secret-long-enough
+          BATTLE_CRON_SECRET: ci-only-battle-cron-secret-long-enough
+          BATTLE_PASS_PRICE_CENTS: "999"
         run: npm run deploy:preflight
 
       - run: npm run build
