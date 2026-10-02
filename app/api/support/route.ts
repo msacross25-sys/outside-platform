@@ -34,7 +34,7 @@ export async function POST(request:Request){
 
  const [profile,pass]=await Promise.all([
   db.battleProfile.findUnique({where:{userId:me.id},select:{vipUntil:true}}),
-  db.battlePassProgress.findUnique({where:{userId:me.id},select:{premiumActive:true}})
+  db.battlePassProgress.findUnique({where:{userId:me.id},select:{premiumActive:true,seasonKey:true}})
  ]);
  const vipActive=Boolean((profile?.vipUntil&&profile.vipUntil>new Date())||(pass?.premiumActive&&pass.seasonKey===battleSeasonKey()));
 
