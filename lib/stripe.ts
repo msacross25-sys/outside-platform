@@ -163,3 +163,46 @@ export function verifyStripeWebhook(raw:string,signatureHeader:string){
   return actual.length===expectedBuffer.length&&timingSafeEqual(actual,expectedBuffer);
  });
 }
+
+
+export async function createBattlePassCheckoutSession(args:{
+ purchaseId:string;
+ userId:string;
+ email:string;
+ seasonKey:string;
+ amountCents:number;
+ successUrl:string;
+ cancelUrl:string;
+}){
+ if(stripeTestMode()){
+  return {
+   id:"cs_test_battle_pass_"+args.purchaseId,
+   url:"https://checkout.stripe.example.test/battle-pass/"+args.purchaseId,
+   payment_intent:"pi_test_battle_pass_"+args.purchaseId
+  };
+ }
+ const body=new URLSearchParams();
+ body.set("mode","payment");
+ body.set("success_url",args.successUrl);
+ body.set("cancel_url",args.cancelUrl);
+ body.set("customer_email",args.email);
+ body.set("client_reference_id",args.userId);
+ body.set("metadata[purchaseType]","battle_pass");
+ body.set("metadata[battlePassPurchaseId]",args.purchaseId);
+ body.set("metadata[userId]",args.userId);
+ body.set("metadata[seasonKey]",args.seasonKey);
+ body.set("line_items[0][quantity]","1");
+ body.set("line_items[0][price_data][currency]","usd");
+ body.set("line_items[0][price_data][unit_amount]",String(args.amountCents));
+ body.set("line_items[0][price_data][product_data][name]","OUTSiiDE Premium Battle Pass · "+args.seasonKey);
+ body.set("payment_intent_data[metadata][purchaseType]","battle_pass");
+ body.set("payment_intent_data[metadata][battlePassPurchaseId]",args.purchaseId);
+ body.set("payment_intent_data[metadata][userId]",args.userId);
+ body.set("payment_intent_data[metadata][seasonKey]",args.seasonKey);
+
+ return stripeRequest<{id:string;url:string|null;payment_intent?:string|null}>(
+  "/checkout/sessions",
+  body,
+  "battle_pass_"+args.purchaseId
+ );
+}
