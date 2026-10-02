@@ -44,6 +44,20 @@ export function BattleRewardCenter(){
   setBusy(false);
  }
 
+ async function activatePremium(){
+  if(busy)return;
+  setBusy(true);setMessage("");
+  const response=await fetch("/api/battles/rewards/pass/checkout",{method:"POST"});
+  const result=await response.json();
+  if(response.ok&&result.checkoutUrl){
+   window.location.href=result.checkoutUrl;
+   return;
+  }
+  setMessage(result.active?"Premium Battle Pass is already active.":result.error??"Unable to start Premium Battle Pass checkout.");
+  if(result.active)await load();
+  setBusy(false);
+ }
+
  async function claimPass(level:number,track:"FREE"|"PREMIUM"){
   if(busy)return;
   setBusy(true);setMessage("");
@@ -106,6 +120,13 @@ export function BattleRewardCenter(){
    <h3>Battle Pass</h3>
    <p>{(pass?.freeXp??0).toLocaleString()} XP · Level {pass?.level??1}</p>
    <p>Free Track active{pass?.premiumActive?" · Premium Track active":" · Premium Track not activated"}</p>
+   {!data.premiumPass?.active&&<button type="button" onClick={activatePremium} disabled={busy}>
+    Activate Premium · ${((data.premiumPass?.priceCents??999)/100).toFixed(2)} / season
+   </button>}
+   {data.premiumPass?.active&&<p>💫 Premium active for {data.premiumPass.seasonKey}</p>}
+   {data.premiumPass?.purchaseStatus==="PENDING"&&!data.premiumPass?.active&&<small>Payment is pending confirmation.</small>}
+   {data.premiumPass?.purchaseStatus==="REFUNDED"&&<small>The previous Premium purchase for this season was refunded.</small>}
+   {data.premiumPass?.purchaseStatus==="CHARGEBACK"&&<small>The previous Premium purchase for this season was reversed.</small>}
    {nextReward&&<p>Next reward milestone: Level {nextReward.level} · {nextReward.free}</p>}
    <div className="battlePassRewards">
     {BATTLE_PASS_REWARDS.map(reward=>{
