@@ -156,6 +156,21 @@ async function main(){
 
  await Promise.all([verifyEmail(alice),verifyEmail(bob),verifyEmail(charlie),verifyEmail(host),verifyEmail(resetUser)]);
 
+ await db.policyAcceptance.deleteMany({where:{userId:alice.id,policyType:"TERMS"}});
+ const policyLogin=await request("/api/auth/login",{method:"POST",body:{login:alice.username,password}});
+ expect(policyLogin.response.status===200&&policyLogin.data?.policyAcceptanceRequired===true,"Missing current policy did not trigger re-acceptance",policyLogin.data);
+ const policyCookie=sessionCookie(policyLogin.setCookie);
+ const policyBlocked=await request("/api/wallet",{cookie:policyCookie});
+ expect(policyBlocked.response.status===401,"Protected access was allowed before current policies were accepted",policyBlocked.data);
+ const policyAccept=await request("/api/account/policies",{
+  method:"POST",
+  cookie:policyCookie,
+  body:{acceptTerms:true,acceptPrivacy:true,acceptCommunityGuidelines:true}
+ });
+ expect(policyAccept.response.status===200&&policyAccept.data?.accepted===true,"Current policy acceptance failed",policyAccept.data);
+ const policyRestored=await request("/api/wallet",{cookie:policyCookie});
+ expect(policyRestored.response.status===200,"Protected access was not restored after policy acceptance",policyRestored.data);
+
  const dup=await request("/api/users",{
   method:"POST",
   headers:{"x-forwarded-for":"198.51.100.200"},
