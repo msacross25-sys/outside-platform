@@ -141,8 +141,18 @@ async function main(){
 
  await Promise.all([verifyEmail(alice),verifyEmail(bob),verifyEmail(charlie),verifyEmail(host),verifyEmail(resetUser)]);
 
- const dup=await request("/api/users",{method:"POST",body:{email:alice.email,username:alice.username,displayName:"Duplicate",password}});
+ const dup=await request("/api/users",{method:"POST",body:{email:alice.email,username:alice.username,displayName:"Duplicate",password,dateOfBirth:"1990-01-01"}});
  expect(dup.response.status===409,"Duplicate signup should be rejected",dup.data);
+
+ const underageUsername="smokeu"+suffix;
+ const underage=await request("/api/users",{method:"POST",body:{
+  email:underageUsername+"@smoke.test",
+  username:underageUsername,
+  displayName:"Smoke Underage",
+  password,
+  dateOfBirth:"2012-01-01"
+ }});
+ expect(underage.response.status===403,"Under-18 signup should be rejected",underage.data);
 
  const badLogin=await request("/api/auth/login",{method:"POST",body:{login:alice.username,password:"wrong-password"}});
  expect(badLogin.response.status===401,"Bad password should be rejected",badLogin.data);
