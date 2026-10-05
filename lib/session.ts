@@ -2,6 +2,7 @@ import {createHash,randomBytes} from "node:crypto";
 import {cookies} from "next/headers";
 import {db} from "@/lib/db";
 import {requestSecurityMeta} from "@/lib/requestSecurity";
+import {isAtLeast18} from "@/lib/age";
 
 const COOKIE="outside_session";
 const DAYS=30;
@@ -29,6 +30,7 @@ const userSelect={
  hideConnections:true,
  verified:true,
  emailVerifiedAt:true,
+ dateOfBirth:true,
  status:true
 } as const;
 
@@ -78,7 +80,9 @@ export async function currentAuth(){
 }
 
 export async function currentUser(){
- return (await currentAuth())?.user??null;
+ const auth=await currentAuth();
+ if(!auth?.user?.dateOfBirth||!isAtLeast18(auth.user.dateOfBirth))return null;
+ return auth.user;
 }
 
 export async function markCurrentSessionMfaVerified(){
