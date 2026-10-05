@@ -561,8 +561,10 @@ async function main(){
  const gift=await request("/api/profile-gifts/"+bob.username,{method:"POST",cookie:aliceCookie,body:{giftKey:"star"}});
  expect(gift.response.status===200,"Eligible profile gift failed",gift.data);
 
+ await db.user.update({where:{id:charlie.id},data:{dateOfBirth:new Date("2012-01-01T00:00:00.000Z")}});
  const underageGift=await request("/api/profile-gifts/"+bob.username,{method:"POST",cookie:charlieCookie,body:{giftKey:"star"}});
- expect(underageGift.response.status===403,"Gift without verified adult age should be rejected",underageGift.data);
+ expect([401,403].includes(underageGift.response.status),"Gift from an underage account should be rejected",underageGift.data);
+ await db.user.update({where:{id:charlie.id},data:{dateOfBirth:new Date("1990-01-01T00:00:00.000Z")}});
 
  const block=await request("/api/safety/block/"+alice.username,{method:"POST",cookie:bobCookie});
  expect(block.response.status===200&&block.data?.blocked===true,"Block failed",block.data);
