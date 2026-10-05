@@ -18,6 +18,12 @@ export async function POST(){
  if(!payoutAccount||payoutAccount.provider!=="stripe"||!payoutAccount.payoutsEnabled||!payoutAccount.detailsSubmitted){
   return NextResponse.json({error:"Complete creator payout onboarding before requesting a payout.",onboardingRequired:true},{status:403});
  }
+ if(payoutAccount.identityStatus!=="VERIFIED"){
+  return NextResponse.json({error:"Identity verification must be completed before requesting a payout.",identityVerificationRequired:true},{status:403});
+ }
+ if(payoutAccount.taxStatus!=="VERIFIED"){
+  return NextResponse.json({error:"Tax onboarding must be verified before requesting a payout.",taxVerificationRequired:true},{status:403});
+ }
 
  const [giftException,battleException]=await Promise.all([
   db.giftTransaction.count({
