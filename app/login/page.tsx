@@ -21,9 +21,13 @@ export default function Login(){
    setError(data.error??"Could not sign in.");
    return;
   }
+  const afterPolicy=data.mfaRequired?"mfa":data.mfaSetupRequired?"setup":"home";
   if(data.ageVerificationRequired){
-   const next=data.mfaRequired?"mfa":data.mfaSetupRequired?"setup":"home";
-   router.push("/verify-age?next="+next);return;
+   const next=data.policyAcceptanceRequired?"policies:"+afterPolicy:afterPolicy;
+   router.push("/verify-age?next="+encodeURIComponent(next));return;
+  }
+  if(data.policyAcceptanceRequired){
+   router.push("/accept-policies?next="+encodeURIComponent(afterPolicy));return;
   }
   if(data.mfaRequired){router.push("/mfa");return;}
   if(data.mfaSetupRequired){router.push("/settings/security?setup=1");return;}
