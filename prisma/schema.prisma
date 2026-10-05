@@ -224,6 +224,7 @@ model User {
   authTokens AuthToken[]
   mfaCredential MfaCredential?
   authEvents AuthEvent[]
+  policyAcceptances PolicyAcceptance[]
   blocksMade Block[] @relation("blocksMade")
   blocksReceived Block[] @relation("blocksReceived")
   mutesMade Mute[] @relation("mutesMade")
@@ -727,10 +728,10 @@ model HostApplication {
   reviewedById String?
   agreementAcceptedAt DateTime?
   identityVerificationStatus String @default("NOT_STARTED")
-  identityProviderRef String?
+  identityProviderRef String? @unique
   identityVerifiedAt DateTime?
   taxStatus String @default("NOT_STARTED")
-  taxProviderRef String?
+  taxProviderRef String? @unique
   taxCompletedAt DateTime?
   payoutEnabled Boolean @default(false)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -799,6 +800,11 @@ model CreatorPayoutAccount {
   providerRef String @unique
   payoutsEnabled Boolean @default(false)
   detailsSubmitted Boolean @default(false)
+  identityStatus String @default("NOT_STARTED")
+  taxStatus String @default("NOT_STARTED")
+  taxFormType String?
+  taxProviderRef String? @unique
+  taxCompletedAt DateTime?
   onboardingCompleteAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1377,6 +1383,31 @@ model AuthToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId, type, createdAt])
   @@index([expiresAt])
+}
+
+model PolicyAcceptance {
+  id String @id @default(cuid())
+  userId String
+  policyType String
+  policyVersion String
+  acceptedAt DateTime @default(now())
+  ipHash String?
+  userAgent String?
+  metadataJson String?
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  @@unique([userId, policyType, policyVersion])
+  @@index([userId, acceptedAt])
+  @@index([policyType, policyVersion, acceptedAt])
+}
+
+model SignupNetwork {
+  ipHash String @id
+  firstUserId String
+  blockedAttempts Int @default(0)
+  createdAt DateTime @default(now())
+  lastAttemptAt DateTime @default(now())
+  @@index([firstUserId])
+  @@index([lastAttemptAt])
 }
 
 model AuthRateLimit {
