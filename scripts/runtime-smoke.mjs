@@ -105,7 +105,7 @@ async function signup(username,displayName){
  expect(r.data?.verificationRequired===true,"Signup did not require verification",r.data);
  const policyCount=await db.policyAcceptance.count({where:{userId:r.data.user.id}});
  expect(policyCount===3,"Signup did not persist all required policy acceptances",{username,policyCount});
- return {id:r.data.user.id,username,email,displayName,signupIp};
+ return {id:r.data.user.id,username,email,displayName,signupIp,deviceCookie:r.setCookie?.split(";")[0]??null};
 }
 
 async function verifyEmail(user){
@@ -198,6 +198,26 @@ async function main(){
   }
  });
  expect(networkDuplicate.response.status===409&&networkDuplicate.data?.code==="DUPLICATE_NETWORK","Shared-network duplicate signup should be blocked",networkDuplicate.data);
+
+ expect(Boolean(alice.deviceCookie),"Signup did not issue a device security cookie",alice);
+ const deviceDuplicate=await request("/api/users",{
+  method:"POST",
+  cookie:alice.deviceCookie,
+  headers:{"x-forwarded-for":"198.51.100.202"},
+  body:{
+   email:"device-duplicate-"+suffix+"@smoke.test",
+   username:"devicedup"+suffix,
+   displayName:"Device Duplicate",
+   password,
+   dateOfBirth:"1990-01-01",
+   confirmAdult:true,
+   confirmSingleAccount:true,
+   acceptTerms:true,
+   acceptPrivacy:true,
+   acceptCommunityGuidelines:true
+  }
+ });
+ expect(deviceDuplicate.response.status===409&&deviceDuplicate.data?.code==="DUPLICATE_DEVICE","Known-device duplicate signup should be blocked",deviceDuplicate.data);
 
  const underageUsername="smokeu"+suffix;
  const underage=await request("/api/users",{
