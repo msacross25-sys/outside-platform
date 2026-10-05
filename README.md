@@ -26,10 +26,22 @@ This repository begins with the production web foundation. The architecture is i
 - `/hq` — Owner HQ
 
 ## Local development
-```bash
+
+### Windows / PowerShell first check
+Production runs on Render. Do not keep production database, Stripe, LiveKit, Redis, email, storage, or worker secrets in PowerShell.
+
+From the repository folder:
+
+```powershell
 npm install
+npm run setup:windows
+npm run db:generate
 npm run dev
 ```
+
+The Windows setup check verifies Node 22 LTS, npm, Git, Prisma, and optional local FFmpeg support. FFmpeg is only required on Windows when testing the clip-processing worker locally.
+
+If you create a local `.env`, use development/test credentials only. Production credentials belong in Render and the relevant provider dashboards.
 
 Open http://localhost:3000.
 
@@ -57,6 +69,10 @@ npm run db:status
 ```
 
 Do not use `prisma migrate dev` against production or Supabase production databases.
+
+## Age requirement
+
+OUTSiiDE account access is for adults age 18 and older. New signups must provide a date of birth and pass the server-side 18+ check. Legacy accounts without a stored date of birth are routed through one-time age verification before protected account features are available.
 
 ## Important
 The repository contains the production web foundation and an expanding set of implemented platform systems. External infrastructure still needs environment-specific configuration and end-to-end validation before public launch, including production database credentials, media/realtime services, payment processing, moderation operations, and mobile distribution.
