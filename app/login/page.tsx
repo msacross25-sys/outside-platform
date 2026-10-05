@@ -21,6 +21,10 @@ export default function Login(){
    setError(data.error??"Could not sign in.");
    return;
   }
+  if(data.ageVerificationRequired){
+   const next=data.mfaRequired?"mfa":data.mfaSetupRequired?"setup":"home";
+   router.push("/verify-age?next="+next);return;
+  }
   if(data.mfaRequired){router.push("/mfa");return;}
   if(data.mfaSetupRequired){router.push("/settings/security?setup=1");return;}
   router.push("/");
