@@ -245,6 +245,7 @@ async function main(){
   body:{packageKey:"starter"}
  });
  expect([401,403].includes(underageCheckout.response.status),"Underage account was allowed to buy coins",underageCheckout.data);
+ await db.user.update({where:{id:charlie.id},data:{dateOfBirth:new Date("1990-01-01T00:00:00.000Z")}});
 
  const checkout=await request("/api/wallet/checkout",{
   method:"POST",
