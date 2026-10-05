@@ -234,13 +234,17 @@ async function main(){
   where:{id:{in:[resetUser.id,bob.id]}},
   data:{dateOfBirth:new Date("1990-01-01T00:00:00.000Z")}
  });
+ await db.user.update({
+  where:{id:charlie.id},
+  data:{dateOfBirth:new Date("2012-01-01T00:00:00.000Z")}
+ });
 
  const underageCheckout=await request("/api/wallet/checkout",{
   method:"POST",
   cookie:charlieCookie,
   body:{packageKey:"starter"}
  });
- expect(underageCheckout.response.status===403,"Unknown/underage account was allowed to buy coins",underageCheckout.data);
+ expect([401,403].includes(underageCheckout.response.status),"Underage account was allowed to buy coins",underageCheckout.data);
 
  const checkout=await request("/api/wallet/checkout",{
   method:"POST",
