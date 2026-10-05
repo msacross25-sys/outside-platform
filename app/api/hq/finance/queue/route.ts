@@ -16,7 +16,7 @@ export async function GET(request:Request){
  const limit=Number.isFinite(requested)?Math.min(200,Math.max(1,requested)):100;
 
  const creators=await db.user.findMany({
-  where:{receivedGiftTransactions:{some:{status:"SETTLED"}}},
+  where:{OR:[{receivedGiftTransactions:{some:{status:"SETTLED"}}},{battleEarnings:{some:{status:"SETTLED"}}}]},
   orderBy:{id:"asc"},
   take:limit+1,
   ...(cursor?{cursor:{id:cursor},skip:1}:{}),
@@ -37,6 +37,9 @@ export async function GET(request:Request){
      provider:true,
      payoutsEnabled:true,
      detailsSubmitted:true,
+     identityStatus:true,
+     taxStatus:true,
+     taxFormType:true,
      onboardingCompleteAt:true
     }
    }
@@ -52,11 +55,16 @@ export async function GET(request:Request){
  }
 
  const cutoff=new Date(Date.now()-30*86400000);
- const [earnedGroups,reservedGroups,openPayouts,exceptionGroups]=await Promise.all([
+ const [giftEarnedGroups,battleEarnedGroups,reservedGroups,openPayouts,giftExceptionGroups,battleExceptionGroups]=await Promise.all([
   db.giftTransaction.groupBy({
    by:["recipientId"],
    where:{recipientId:{in:ids},status:"SETTLED"},
    _sum:{creatorShareCents:true}
+  }),
+  db.battleEarning.groupBy({
+   by:["userId"],
+   where:{userId:{in:ids},status:"SETTLED"},
+   _sum:{amountCents:true}
   }),
   db.creatorPayout.groupBy({
    by:["creatorId"],
@@ -75,12 +83,23 @@ export async function GET(request:Request){
     createdAt:{gte:cutoff}
    },
    _count:{_all:true}
+  }),
+  db.battleEarning.groupBy({
+   by:["userId"],
+   where:{
+    userId:{in:ids},
+    status:{in:["CHARGEBACK","ADJUSTED"]},
+    createdAt:{gte:cutoff}
+   },
+   _count:{_all:true}
   })
  ]);
 
- const earned=new Map(earnedGroups.map(row=>[row.recipientId,row._sum.creatorShareCents??0]));
+ const giftEarned=new Map(giftEarnedGroups.map(row=>[row.recipientId,row._sum.creatorShareCents??0]));
+ const battleEarned=new Map(battleEarnedGroups.map(row=>[row.userId,row._sum.amountCents??0]));
  const reserved=new Map(reservedGroups.map(row=>[row.creatorId,row._sum.amountCents??0]));
- const exceptions=new Map(exceptionGroups.map(row=>[row.recipientId,row._count._all]));
+ const giftExceptions=new Map(giftExceptionGroups.map(row=>[row.recipientId,row._count._all]));
+ const battleExceptions=new Map(battleExceptionGroups.map(row=>[row.userId,row._count._all]));
  const openByCreator=new Map<string,(typeof openPayouts)[number]>();
  for(const payout of openPayouts){
   if(!openByCreator.has(payout.creatorId))openByCreator.set(payout.creatorId,payout);
@@ -88,9 +107,12 @@ export async function GET(request:Request){
 
  const queue=[];
  for(const user of page){
-  const available=Math.max(0,(earned.get(user.id)??0)-(reserved.get(user.id)??0));
+  const available=Math.max(
+   0,
+   (giftEarned.get(user.id)??0)+(battleEarned.get(user.id)??0)-(reserved.get(user.id)??0)
+  );
   const open=openByCreator.get(user.id)??null;
-  const exceptionCount=exceptions.get(user.id)??0;
+  const exceptionCount=(giftExceptions.get(user.id)??0)+(battleExceptions.get(user.id)??0);
 
   if(available<MINIMUM_PAYOUT_CENTS&&!open)continue;
 
@@ -100,7 +122,12 @@ export async function GET(request:Request){
    eligible:
     available>=MINIMUM_PAYOUT_CENTS&&
     user.status==="ACTIVE"&&
-    Boolean(user.payoutAccount?.payoutsEnabled&&user.payoutAccount?.detailsSubmitted)&&
+    Boolean(
+     user.payoutAccount?.payoutsEnabled&&
+     user.payoutAccount?.detailsSubmitted&&
+     user.payoutAccount?.identityStatus==="VERIFIED"&&
+     user.payoutAccount?.taxStatus==="VERIFIED"
+    )&&
     exceptionCount===0,
    financialReviewRequired:exceptionCount>0,
    openPayout:open
