@@ -78,3 +78,8 @@ WHERE "kind" = 'ACCOUNT_CREATED'
   AND "userId" IS NOT NULL
 ORDER BY "ipHash","createdAt" ASC
 ON CONFLICT ("ipHash") DO NOTHING;
+
+-- Keep new sensitive tables closed to Supabase's public Data API.
+ALTER TABLE "PolicyAcceptance" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "SignupNetwork" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "SignupDevice" ENABLE ROW LEVEL SECURITY;
