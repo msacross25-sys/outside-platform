@@ -21,7 +21,11 @@ export default function VerifyAgePage(){
   const data=await response.json();
   if(!response.ok){setError(data.error??"Age verification failed.");setBusy(false);return}
 
-  const next=new URLSearchParams(window.location.search).get("next");
+  const next=new URLSearchParams(window.location.search).get("next")||"home";
+  if(next.startsWith("policies:")){
+   const after=next.slice("policies:".length)||"home";
+   router.push("/accept-policies?next="+encodeURIComponent(after));return;
+  }
   if(next==="mfa"){router.push("/mfa");return}
   if(next==="setup"){router.push("/settings/security?setup=1");return}
   router.push("/");
