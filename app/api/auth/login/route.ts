@@ -4,6 +4,7 @@ import {verifyPassword} from "@/lib/password";
 import {createSession} from "@/lib/session";
 import {checkAuthRateLimit,clearAuthRateLimit} from "@/lib/authRateLimit";
 import {recordAuthEvent} from "@/lib/authEvents";
+import {isAtLeast18} from "@/lib/age";
 
 const WINDOW=15*60*1000;
 
@@ -27,6 +28,10 @@ export async function POST(request:Request){
   await recordAuthEvent(request,"LOGIN_BLOCKED_ACCOUNT",user.id);
   return NextResponse.json({error:"This account is not currently available."},{status:403});
  }
+ if(user.dateOfBirth&&!isAtLeast18(user.dateOfBirth)){
+  await recordAuthEvent(request,"LOGIN_BLOCKED_UNDERAGE",user.id);
+  return NextResponse.json({error:"OUTSiiDE is for adults age 18 and older."},{status:403});
+ }
  if(!user.emailVerifiedAt){
   await recordAuthEvent(request,"LOGIN_EMAIL_UNVERIFIED",user.id);
   return NextResponse.json({error:"Verify your email before signing in.",code:"EMAIL_VERIFICATION_REQUIRED"},{status:403});
@@ -44,6 +49,7 @@ export async function POST(request:Request){
  const mfaSetupRequired=Boolean(staff?.active&&staff.mfaRequired&&!credential?.enabledAt);
  return NextResponse.json({
   user:{id:user.id,username:user.username,displayName:user.displayName},
+  ageVerificationRequired:!user.dateOfBirth,
   mfaRequired,
   mfaSetupRequired
  });
