@@ -38,18 +38,21 @@ export async function createSession(userId:string,request:Request,mfaVerified=fa
  const token=randomBytes(32).toString("base64url");
  const expiresAt=new Date(Date.now()+DAYS*86400000);
  const {ipHash,userAgent}=requestSecurityMeta(request);
- const session=await db.session.create({
-  data:{
-   userId,
-   tokenHash:digest(token),
-   expiresAt,
-   ipHash,
-   userAgent,
-   lastSeenAt:new Date(),
-   mfaVerifiedAt:mfaVerified?new Date():null
-  },
-  select:{id:true}
- });
+ const session=await db.$transaction(async tx=>{
+  await tx.session.deleteMany({where:{userId}});
+  return tx.session.create({
+   data:{
+    userId,
+    tokenHash:digest(token),
+    expiresAt,
+    ipHash,
+    userAgent,
+    lastSeenAt:new Date(),
+    mfaVerifiedAt:mfaVerified?new Date():null
+   },
+   select:{id:true}
+  });
+ },{isolationLevel:"Serializable"});
  (await cookies()).set(COOKIE,token,{
   httpOnly:true,
   secure:process.env.NODE_ENV==="production",
