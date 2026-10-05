@@ -3,6 +3,7 @@ import {cookies} from "next/headers";
 import {db} from "@/lib/db";
 import {requestSecurityMeta} from "@/lib/requestSecurity";
 import {isAtLeast18} from "@/lib/age";
+import {hasCurrentPolicyAcceptances} from "@/lib/policyAcceptance";
 
 const COOKIE="outside_session";
 const DAYS=30;
@@ -85,6 +86,7 @@ export async function currentAuth(){
 export async function currentUser(){
  const auth=await currentAuth();
  if(!auth?.user?.dateOfBirth||!isAtLeast18(auth.user.dateOfBirth))return null;
+ if(!await hasCurrentPolicyAcceptances(auth.user.id))return null;
  return auth.user;
 }
 
