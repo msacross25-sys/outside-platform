@@ -39,21 +39,34 @@ export async function createSession(userId:string,request:Request,mfaVerified=fa
  const token=randomBytes(32).toString("base64url");
  const expiresAt=new Date(Date.now()+DAYS*86400000);
  const {ipHash,userAgent}=requestSecurityMeta(request);
- const session=await db.$transaction(async tx=>{
-  await tx.session.deleteMany({where:{userId}});
-  return tx.session.create({
-   data:{
-    userId,
-    tokenHash:digest(token),
-    expiresAt,
-    ipHash,
-    userAgent,
-    lastSeenAt:new Date(),
-    mfaVerifiedAt:mfaVerified?new Date():null
-   },
-   select:{id:true}
-  });
- },{isolationLevel:"Serializable"});
+ let session:{id:string}|null=null;
+ let lastError:unknown=null;
+ for(let attempt=0;attempt<4;attempt++){
+  try{
+   session=await db.$transaction(async tx=>{
+    await tx.session.deleteMany({where:{userId}});
+    return tx.session.create({
+     data:{
+      userId,
+      tokenHash:digest(token),
+      expiresAt,
+      ipHash,
+      userAgent,
+      lastSeenAt:new Date(),
+      mfaVerifiedAt:mfaVerified?new Date():null
+     },
+     select:{id:true}
+    });
+   },{isolationLevel:"Serializable"});
+   break;
+  }catch(error:any){
+   lastError=error;
+   const retryable=error?.code==="P2034"||String(error?.message??"").includes("write conflict")||String(error?.message??"").includes("deadlock");
+   if(!retryable||attempt===3)throw error;
+   await new Promise(resolve=>setTimeout(resolve,25*(attempt+1)));
+  }
+ }
+ if(!session)throw lastError instanceof Error?lastError:new Error("Session creation failed.");
  (await cookies()).set(COOKIE,token,{
   httpOnly:true,
   secure:process.env.NODE_ENV==="production",
