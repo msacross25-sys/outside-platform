@@ -29,6 +29,8 @@ export function HQPayoutQueue(){
        {" · "}Provider {x.creator.payoutAccount?.provider??"not connected"}
        {" · "}Payouts {x.creator.payoutAccount?.payoutsEnabled?"enabled":"not enabled"}
        {" · "}Details {x.creator.payoutAccount?.detailsSubmitted?"complete":"incomplete"}
+       {" · "}Identity {x.creator.payoutAccount?.identityStatus??"NOT_STARTED"}
+       {" · "}Tax {x.creator.payoutAccount?.taxStatus??"NOT_STARTED"}
       </small>
      </div>
      {x.openPayout
