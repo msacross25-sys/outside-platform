@@ -181,13 +181,13 @@ async function main(){
  });
  expect(dup.response.status===409,"Duplicate signup should be rejected",dup.data);
 
- const networkDuplicate=await request("/api/users",{
+ const sharedNetworkSignup=await request("/api/users",{
   method:"POST",
   headers:{"x-forwarded-for":alice.signupIp},
   body:{
-   email:"network-duplicate-"+suffix+"@smoke.test",
-   username:"networkdup"+suffix,
-   displayName:"Network Duplicate",
+   email:"shared-network-"+suffix+"@smoke.test",
+   username:"sharednet"+suffix,
+   displayName:"Shared Network Adult",
    password,
    dateOfBirth:"1990-01-01",
    confirmAdult:true,
@@ -197,7 +197,12 @@ async function main(){
    acceptCommunityGuidelines:true
   }
  });
- expect(networkDuplicate.response.status===409&&networkDuplicate.data?.code==="DUPLICATE_NETWORK","Shared-network duplicate signup should be blocked",networkDuplicate.data);
+ expect(sharedNetworkSignup.response.status===201,"Legitimate shared-network signup should be allowed",sharedNetworkSignup.data);
+ const sharedNetworkEvent=await db.authEvent.findFirst({
+  where:{kind:"SIGNUP_SHARED_NETWORK"},
+  orderBy:{createdAt:"desc"}
+ });
+ expect(Boolean(sharedNetworkEvent),"Shared-network signup risk signal was not logged",sharedNetworkEvent);
 
  expect(Boolean(alice.deviceCookie),"Signup did not issue a device security cookie",alice);
  const deviceDuplicate=await request("/api/users",{
