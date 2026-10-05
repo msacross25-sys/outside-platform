@@ -7,6 +7,7 @@ const suffix=Date.now().toString(36).slice(-7);
 const password="RuntimeSmoke123!";
 const resetPassword="RuntimeSmoke456!";
 const BASE32="ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+let signupIpCounter=10;
 
 function fail(message,detail){
  console.error("\nSMOKE FAILURE:",message);
@@ -87,10 +88,24 @@ async function stripeWebhook(event){
 }
 async function signup(username,displayName){
  const email=username+"@smoke.test";
- const r=await request("/api/users",{method:"POST",body:{email,username,displayName,password,dateOfBirth:"1990-01-01"}});
+ const signupIp="198.51.100."+signupIpCounter++;
+ const r=await request("/api/users",{
+  method:"POST",
+  headers:{"x-forwarded-for":signupIp},
+  body:{
+   email,username,displayName,password,dateOfBirth:"1990-01-01",
+   confirmAdult:true,
+   confirmSingleAccount:true,
+   acceptTerms:true,
+   acceptPrivacy:true,
+   acceptCommunityGuidelines:true
+  }
+ });
  expect(r.response.status===201,"Signup failed",{status:r.response.status,data:r.data});
  expect(r.data?.verificationRequired===true,"Signup did not require verification",r.data);
- return {id:r.data.user.id,username,email,displayName};
+ const policyCount=await db.policyAcceptance.count({where:{userId:r.data.user.id}});
+ expect(policyCount===3,"Signup did not persist all required policy acceptances",{username,policyCount});
+ return {id:r.data.user.id,username,email,displayName,signupIp};
 }
 
 async function verifyEmail(user){
@@ -141,17 +156,51 @@ async function main(){
 
  await Promise.all([verifyEmail(alice),verifyEmail(bob),verifyEmail(charlie),verifyEmail(host),verifyEmail(resetUser)]);
 
- const dup=await request("/api/users",{method:"POST",body:{email:alice.email,username:alice.username,displayName:"Duplicate",password,dateOfBirth:"1990-01-01"}});
+ const dup=await request("/api/users",{
+  method:"POST",
+  headers:{"x-forwarded-for":"198.51.100.200"},
+  body:{
+   email:alice.email,username:alice.username,displayName:"Duplicate",password,dateOfBirth:"1990-01-01",
+   confirmAdult:true,confirmSingleAccount:true,acceptTerms:true,acceptPrivacy:true,acceptCommunityGuidelines:true
+  }
+ });
  expect(dup.response.status===409,"Duplicate signup should be rejected",dup.data);
 
+ const networkDuplicate=await request("/api/users",{
+  method:"POST",
+  headers:{"x-forwarded-for":alice.signupIp},
+  body:{
+   email:"network-duplicate-"+suffix+"@smoke.test",
+   username:"networkdup"+suffix,
+   displayName:"Network Duplicate",
+   password,
+   dateOfBirth:"1990-01-01",
+   confirmAdult:true,
+   confirmSingleAccount:true,
+   acceptTerms:true,
+   acceptPrivacy:true,
+   acceptCommunityGuidelines:true
+  }
+ });
+ expect(networkDuplicate.response.status===409&&networkDuplicate.data?.code==="DUPLICATE_NETWORK","Shared-network duplicate signup should be blocked",networkDuplicate.data);
+
  const underageUsername="smokeu"+suffix;
- const underage=await request("/api/users",{method:"POST",body:{
-  email:underageUsername+"@smoke.test",
-  username:underageUsername,
-  displayName:"Smoke Underage",
-  password,
-  dateOfBirth:"2012-01-01"
- }});
+ const underage=await request("/api/users",{
+  method:"POST",
+  headers:{"x-forwarded-for":"198.51.100.201"},
+  body:{
+   email:underageUsername+"@smoke.test",
+   username:underageUsername,
+   displayName:"Smoke Underage",
+   password,
+   dateOfBirth:"2012-01-01",
+   confirmAdult:true,
+   confirmSingleAccount:true,
+   acceptTerms:true,
+   acceptPrivacy:true,
+   acceptCommunityGuidelines:true
+  }
+ });
  expect(underage.response.status===403,"Under-18 signup should be rejected",underage.data);
 
  const badLogin=await request("/api/auth/login",{method:"POST",body:{login:alice.username,password:"wrong-password"}});
@@ -185,16 +234,15 @@ async function main(){
  const throttled=await request("/api/auth/login",{method:"POST",body:{login:rateLogin,password:"bad-password"}});
  expect(throttled.response.status===429,"Login throttle did not activate",throttled.data);
 
- console.log("4. session management");
+ console.log("4. one-device session management");
  const secondAlice=await login(alice.username);
+ const oldDeviceCheck=await request("/api/auth/me",{cookie:aliceCookie});
+ expect(oldDeviceCheck.response.status===200&&!oldDeviceCheck.data?.user,"Older device remained authenticated after a new login",oldDeviceCheck.data);
+ aliceCookie=secondAlice.cookie;
  const sessionList=await request("/api/security/sessions",{cookie:aliceCookie});
- expect(sessionList.response.status===200&&sessionList.data?.sessions?.length>=2,"Multiple sessions were not listed",sessionList.data);
- const revokeOthers=await request("/api/security/sessions",{method:"POST",cookie:aliceCookie,body:{action:"REVOKE_OTHERS"}});
- expect(revokeOthers.response.status===200&&revokeOthers.data?.revoked>=1,"Other sessions were not revoked",revokeOthers.data);
- const revokedCheck=await request("/api/auth/me",{cookie:secondAlice.cookie});
- expect(revokedCheck.response.status===200&&!revokedCheck.data?.user,"Revoked session still authenticated",revokedCheck.data);
+ expect(sessionList.response.status===200&&sessionList.data?.sessions?.length===1&&sessionList.data.sessions[0]?.current===true,"Account did not collapse to exactly one active session",sessionList.data);
  const securityEvents=await request("/api/security/events",{cookie:aliceCookie});
- expect(securityEvents.response.status===200&&securityEvents.data?.events?.some(x=>x.kind==="OTHER_SESSIONS_REVOKED"),"Security event history missed session revocation",securityEvents.data);
+ expect(securityEvents.response.status===200&&securityEvents.data?.events?.some(x=>x.kind==="LOGIN_SUCCESS"),"Security event history missed successful login",securityEvents.data);
 
  console.log("5. staff MFA and HQ enforcement");
  await db.staffProfile.create({data:{userId:host.id,role:"OWNER",mfaRequired:true}});
