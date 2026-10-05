@@ -70,11 +70,7 @@ export async function POST(request:Request){
    where:{ipHash},
    data:{blockedAttempts:{increment:1},lastAttemptAt:new Date()}
   });
-  await recordAuthEvent(request,"SIGNUP_BLOCKED_DUPLICATE_NETWORK",null,{firstUserId:existingNetwork.firstUserId});
-  return NextResponse.json({
-   error:"An OUTSiiDE account has already been created from this network. Contact Support if this is a legitimate shared network.",
-   code:"DUPLICATE_NETWORK"
-  },{status:409});
+  await recordAuthEvent(request,"SIGNUP_SHARED_NETWORK",null,{firstUserId:existingNetwork.firstUserId});
  }
 
  let referralOwnerId:string|undefined;
@@ -97,9 +93,11 @@ export async function POST(request:Request){
     select:{id:true,email:true,username:true,displayName:true,createdAt:true}
    });
 
-   await tx.signupNetwork.create({
-    data:{ipHash,firstUserId:created.id,lastAttemptAt:new Date()}
-   });
+   if(!existingNetwork){
+    await tx.signupNetwork.create({
+     data:{ipHash,firstUserId:created.id,lastAttemptAt:new Date()}
+    });
+   }
    await tx.signupDevice.create({
     data:{deviceHash,firstUserId:created.id,lastAttemptAt:new Date()}
    });
