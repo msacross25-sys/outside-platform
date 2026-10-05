@@ -51,3 +51,18 @@ CREATE TABLE "SignupNetwork" (
 
 CREATE INDEX "SignupNetwork_firstUserId_idx" ON "SignupNetwork"("firstUserId");
 CREATE INDEX "SignupNetwork_lastAttemptAt_idx" ON "SignupNetwork"("lastAttemptAt");
+
+-- Backfill known signup networks from existing immutable authentication history.
+INSERT INTO "SignupNetwork" ("ipHash","firstUserId","blockedAttempts","createdAt","lastAttemptAt")
+SELECT DISTINCT ON ("ipHash")
+  "ipHash",
+  "userId",
+  0,
+  "createdAt",
+  "createdAt"
+FROM "AuthEvent"
+WHERE "kind" = 'ACCOUNT_CREATED'
+  AND "ipHash" IS NOT NULL
+  AND "userId" IS NOT NULL
+ORDER BY "ipHash","createdAt" ASC
+ON CONFLICT ("ipHash") DO NOTHING;
