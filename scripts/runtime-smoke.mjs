@@ -416,8 +416,22 @@ async function main(){
   settledAt:new Date()
  }});
 
+ const taxBlockedPayout=await request("/api/wallet/payout",{method:"POST",cookie:bobCookie});
+ expect(taxBlockedPayout.response.status===403&&taxBlockedPayout.data?.taxVerificationRequired===true,"Creator payout was not blocked before tax verification",taxBlockedPayout.data);
+
+ await db.creatorPayoutAccount.update({
+  where:{userId:bob.id},
+  data:{
+   identityStatus:"VERIFIED",
+   taxStatus:"VERIFIED",
+   taxFormType:"W-9",
+   taxProviderRef:"tax_test_"+bob.id,
+   taxCompletedAt:new Date()
+  }
+ });
+
  const payoutRequest=await request("/api/wallet/payout",{method:"POST",cookie:bobCookie});
- expect(payoutRequest.response.status===200&&payoutRequest.data?.payout?.id,"Creator payout request failed",payoutRequest.data);
+ expect(payoutRequest.response.status===200&&payoutRequest.data?.payout?.id,"Creator payout request failed after compliance verification",payoutRequest.data);
  const payoutId=payoutRequest.data.payout.id;
 
  const payoutProcessing=await request("/api/hq/finance/payouts/"+payoutId,{
