@@ -9,13 +9,18 @@ import {
 } from "@/lib/stripe";
 
 async function syncAccount(userId:string,providerRef:string){
- const remote=await retrieveConnectAccount(providerRef);
+ const [remote,local]=await Promise.all([
+  retrieveConnectAccount(providerRef),
+  db.creatorPayoutAccount.findUnique({where:{userId},select:{taxStatus:true}})
+ ]);
  const complete=Boolean(remote.details_submitted&&remote.payouts_enabled);
  return db.creatorPayoutAccount.update({
   where:{userId},
   data:{
    payoutsEnabled:Boolean(remote.payouts_enabled),
    detailsSubmitted:Boolean(remote.details_submitted),
+   identityStatus:complete?"VERIFIED":"PENDING",
+   taxStatus:local?.taxStatus==="NOT_STARTED"?"PENDING_PROVIDER":undefined,
    onboardingCompleteAt:complete?new Date():null
   }
  });
@@ -59,7 +64,9 @@ export async function POST(){
     data:{
      userId:me.id,
      provider:"stripe",
-     providerRef:remote.id
+     providerRef:remote.id,
+     identityStatus:"PENDING",
+     taxStatus:"PENDING_PROVIDER"
     }
    });
   }else{
@@ -67,7 +74,11 @@ export async function POST(){
   }
 
   if(account.payoutsEnabled&&account.detailsSubmitted){
-   return NextResponse.json({account,onboardingComplete:true});
+   return NextResponse.json({
+    account,
+    onboardingComplete:true,
+    taxVerificationRequired:account.taxStatus!=="VERIFIED"
+   });
   }
 
   const appUrl=process.env.NEXT_PUBLIC_APP_URL;
