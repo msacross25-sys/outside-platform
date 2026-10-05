@@ -87,7 +87,7 @@ async function stripeWebhook(event){
 }
 async function signup(username,displayName){
  const email=username+"@smoke.test";
- const r=await request("/api/users",{method:"POST",body:{email,username,displayName,password}});
+ const r=await request("/api/users",{method:"POST",body:{email,username,displayName,password,dateOfBirth:"1990-01-01"}});
  expect(r.response.status===201,"Signup failed",{status:r.response.status,data:r.data});
  expect(r.data?.verificationRequired===true,"Signup did not require verification",r.data);
  return {id:r.data.user.id,username,email,displayName};
