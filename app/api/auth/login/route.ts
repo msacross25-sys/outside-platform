@@ -5,6 +5,7 @@ import {createSession} from "@/lib/session";
 import {checkAuthRateLimit,clearAuthRateLimit} from "@/lib/authRateLimit";
 import {recordAuthEvent} from "@/lib/authEvents";
 import {isAtLeast18} from "@/lib/age";
+import {missingRequiredPolicies} from "@/lib/policyAcceptance";
 
 const WINDOW=15*60*1000;
 
@@ -38,9 +39,10 @@ export async function POST(request:Request){
  }
 
  await clearAuthRateLimit("LOGIN",login,request);
- const [credential,staff]=await Promise.all([
+ const [credential,staff,missingPolicies]=await Promise.all([
   db.mfaCredential.findUnique({where:{userId:user.id},select:{enabledAt:true}}),
-  db.staffProfile.findUnique({where:{userId:user.id},select:{active:true,mfaRequired:true}})
+  db.staffProfile.findUnique({where:{userId:user.id},select:{active:true,mfaRequired:true}}),
+  missingRequiredPolicies(user.id)
  ]);
  await createSession(user.id,request,false);
  await recordAuthEvent(request,"LOGIN_SUCCESS",user.id);
@@ -50,6 +52,7 @@ export async function POST(request:Request){
  return NextResponse.json({
   user:{id:user.id,username:user.username,displayName:user.displayName},
   ageVerificationRequired:!user.dateOfBirth,
+  policyAcceptanceRequired:missingPolicies.length>0,
   mfaRequired,
   mfaSetupRequired
  });
