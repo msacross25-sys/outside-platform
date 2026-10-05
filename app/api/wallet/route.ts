@@ -36,6 +36,10 @@ export async function GET(){
    provider:payoutAccount.provider,
    payoutsEnabled:payoutAccount.payoutsEnabled,
    detailsSubmitted:payoutAccount.detailsSubmitted,
+   identityStatus:payoutAccount.identityStatus,
+   taxStatus:payoutAccount.taxStatus,
+   taxFormType:payoutAccount.taxFormType,
+   taxCompletedAt:payoutAccount.taxCompletedAt,
    onboardingCompleteAt:payoutAccount.onboardingCompleteAt
   }:null,
   earnings:{
@@ -44,7 +48,14 @@ export async function GET(){
    totalEarnedCents:settledCents+pendingCents,
    paidOrReservedCents:reservedOrPaidCents,
    minimumPayoutCents:MINIMUM_PAYOUT_CENTS,
-   payoutEligible:availableCents>=MINIMUM_PAYOUT_CENTS,
+   payoutEligible:
+    availableCents>=MINIMUM_PAYOUT_CENTS&&
+    Boolean(
+     payoutAccount?.payoutsEnabled&&
+     payoutAccount?.detailsSubmitted&&
+     payoutAccount?.identityStatus==="VERIFIED"&&
+     payoutAccount?.taxStatus==="VERIFIED"
+    ),
    nextPayout,
    battleSettledCents:settledBattles._sum.amountCents??0,
    battlePendingCents:pendingBattles._sum.amountCents??0
