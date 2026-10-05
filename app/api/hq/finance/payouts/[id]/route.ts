@@ -31,6 +31,12 @@ export async function PATCH(request:Request,{params}:{params:Promise<{id:string}
   if(!account||account.provider!=="stripe"||!account.payoutsEnabled||!account.detailsSubmitted){
    return NextResponse.json({error:"Creator payout account is not ready."},{status:409});
   }
+  if(account.identityStatus!=="VERIFIED"){
+   return NextResponse.json({error:"Creator identity verification is not complete."},{status:409});
+  }
+  if(account.taxStatus!=="VERIFIED"){
+   return NextResponse.json({error:"Creator tax verification is not complete."},{status:409});
+  }
 
   try{
    const transfer=await createConnectTransfer({
