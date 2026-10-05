@@ -1410,6 +1410,16 @@ model SignupNetwork {
   @@index([lastAttemptAt])
 }
 
+model SignupDevice {
+  deviceHash String @id
+  firstUserId String
+  blockedAttempts Int @default(0)
+  createdAt DateTime @default(now())
+  lastAttemptAt DateTime @default(now())
+  @@index([firstUserId])
+  @@index([lastAttemptAt])
+}
+
 model AuthRateLimit {
   keyHash String @id
   action String
